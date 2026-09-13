@@ -91,11 +91,11 @@ export function getAppSettings(): AppSettings {
     settingsMap[r.key] = r.value;
   }
   return {
-    provider: (settingsMap["provider"] as "openai" | "ollama") || "openai",
+    provider: (settingsMap["provider"] as "openai" | "ollama") || "ollama",
     openai_api_key: settingsMap["openai_api_key"] || "",
     openai_model: settingsMap["openai_model"] || "gpt-4o",
     ollama_base_url: settingsMap["ollama_base_url"] || "http://localhost:11434",
-    ollama_model: settingsMap["ollama_model"] || "qwen2.5:7b",
+    ollama_model: settingsMap["ollama_model"] || "qwen3:8b",
   };
 }
 

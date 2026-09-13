@@ -83,23 +83,35 @@ function initSchema(db: Database.Database) {
     db.exec(`ALTER TABLE voice_profiles ADD COLUMN profile_json TEXT;`);
   } catch {}
 
-  // Initialize default settings if missing
+  // Initialize default settings (Ollama as primary local engine)
   const defaultSettings: Record<string, string> = {
-    provider: "openai", // "openai" | "ollama"
+    provider: "ollama", // default provider = "ollama"
     openai_api_key: process.env.OPENAI_API_KEY || "",
     openai_model: "gpt-4o",
     ollama_base_url: "http://localhost:11434",
-    ollama_model: "qwen2.5:7b",
+    ollama_model: "qwen3:8b", // default model = "qwen3:8b"
   };
 
   const getStmt = db.prepare("SELECT value FROM app_settings WHERE key = ?");
   const setStmt = db.prepare("INSERT INTO app_settings (key, value) VALUES (?, ?)");
+  const updateStmt = db.prepare("UPDATE app_settings SET value = ? WHERE key = ?");
 
   for (const [key, value] of Object.entries(defaultSettings)) {
     const row = getStmt.get(key);
     if (!row) {
       setStmt.run(key, value);
     }
+  }
+
+  // Ensure default is switched to Ollama qwen3:8b
+  const currentProvider = getStmt.get("provider") as { value: string } | undefined;
+  const currentKey = getStmt.get("openai_api_key") as { value: string } | undefined;
+  if (!currentProvider || (currentProvider.value === "openai" && (!currentKey || !currentKey.value))) {
+    updateStmt.run("ollama", "provider");
+  }
+  const currentOllamaModel = getStmt.get("ollama_model") as { value: string } | undefined;
+  if (!currentOllamaModel || currentOllamaModel.value === "qwen2.5:7b") {
+    updateStmt.run("qwen3:8b", "ollama_model");
   }
 
   // Initialize default Voice DNA profile if none exists

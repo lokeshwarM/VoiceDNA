@@ -15,6 +15,7 @@ import {
   Sliders,
   Send,
   Zap,
+  Terminal,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { DiffViewer } from "./DiffViewer";
@@ -70,6 +71,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
   const [learning, setLearning] = useState(false);
   const [copied, setCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copiedOllamaCmd, setCopiedOllamaCmd] = useState(false);
 
   const [fidelityReport, setFidelityReport] = useState<FidelityReport | null>(null);
   const [noveltyReport, setNoveltyReport] = useState<VerbatimReport | null>(null);
@@ -231,12 +233,40 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
       </div>
 
       {errorMessage && (
-        <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-800/60 text-rose-300 text-xs flex items-start gap-2 shadow-lg animate-in fade-in">
-          <AlertCircle className="w-4 h-4 text-rose-400 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <span className="font-semibold">Generation Notice: </span>
-            <span>{errorMessage}</span>
+        <div className="p-4 rounded-xl bg-amber-950/50 border border-amber-800/60 text-amber-200 text-xs shadow-lg space-y-3 animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <span className="font-semibold text-amber-300">
+                {errorMessage.toLowerCase().includes("ollama") || errorMessage.includes("11434")
+                  ? "Local Ollama Engine Notice"
+                  : "Generation Notice"}
+              </span>
+              <p className="mt-1 text-slate-300 whitespace-pre-wrap">{errorMessage}</p>
+            </div>
           </div>
+
+          {(errorMessage.toLowerCase().includes("ollama") || errorMessage.includes("11434")) && (
+            <div className="p-3 rounded-xl bg-black/75 border border-amber-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 font-mono text-emerald-300 text-xs">
+                <Terminal className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="font-bold">ollama run qwen3:8b</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText("ollama run qwen3:8b");
+                  setCopiedOllamaCmd(true);
+                  setTimeout(() => setCopiedOllamaCmd(false), 2000);
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 transition shadow-sm"
+              >
+                {copiedOllamaCmd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedOllamaCmd ? "Copied Command!" : "Copy: ollama run qwen3:8b"}</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 

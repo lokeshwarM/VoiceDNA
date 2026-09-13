@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAppSettings, updateAppSettings } from "@/lib/db/queries";
-import { testProviderConnection } from "@/lib/ai/provider";
+import { testProviderConnection, checkOllamaStatus } from "@/lib/ai/provider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +8,13 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const settings = getAppSettings();
-    return NextResponse.json({ success: true, settings });
+    const ollamaStatus = await checkOllamaStatus(settings.ollama_base_url, settings.ollama_model);
+
+    return NextResponse.json({
+      success: true,
+      settings,
+      ollamaStatus,
+    });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
@@ -28,6 +34,7 @@ export async function POST(req: NextRequest) {
 
     updateAppSettings(newSettings);
     const current = getAppSettings();
+    const ollamaStatus = await checkOllamaStatus(current.ollama_base_url, current.ollama_model);
 
     if (test) {
       const testResult = await testProviderConnection(current);
@@ -35,10 +42,15 @@ export async function POST(req: NextRequest) {
         success: true,
         settings: current,
         testResult,
+        ollamaStatus,
       });
     }
 
-    return NextResponse.json({ success: true, settings: current });
+    return NextResponse.json({
+      success: true,
+      settings: current,
+      ollamaStatus,
+    });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }

@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   const providerLabel =
     settings?.provider === "openai"
       ? `OpenAI • ${settings.openai_model || "gpt-4o"}`
-      : `Ollama • ${settings?.ollama_model || "qwen2.5"}`;
+      : `Ollama • ${settings?.ollama_model || "qwen3:8b"}`;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">

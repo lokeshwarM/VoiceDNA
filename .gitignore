@@ -20,21 +20,35 @@
 # production
 /build
 
-# misc
+# misc & OS
 .DS_Store
 *.pem
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
 
-# debug
+# debug & logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
 
-# vercel
+# vercel & turbopack
 .vercel
+.turbo
+
+# IDE & editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
 
 # typescript
 *.tsbuildinfo
@@ -45,3 +59,5 @@ next-env.d.ts
 *.db-journal
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3

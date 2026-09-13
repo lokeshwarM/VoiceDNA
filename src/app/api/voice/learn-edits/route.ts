@@ -36,7 +36,12 @@ export async function POST(req: NextRequest) {
       success: true,
       rule: result.rule,
       diffSummary: result.diffSummary,
-      message: `Style rule learned: "${result.rule.rule_text}"`,
+      structuralChanges: result.structuralChanges,
+      fingerprintRebuilt: result.fingerprintRebuilt,
+      totalEditsCount: result.totalEditsCount,
+      message: result.fingerprintRebuilt
+        ? `Style rule learned & VoiceDNA fingerprint rebuilt (20th edit milestone reached)!`
+        : `Style rule learned: "${result.rule.rule_text}"`,
     });
   } catch (err: any) {
     console.error("Learn edits error:", err);

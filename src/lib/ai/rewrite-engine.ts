@@ -15,6 +15,7 @@ import {
   FidelityReport,
   VerbatimReport,
 } from "./fidelity-guard";
+import { getFingerprintRules } from "../styleDNA/fingerprint";
 
 export interface RewriteOptions {
   draftInput: string;
@@ -40,25 +41,33 @@ export async function executeRewrite(options: RewriteOptions): Promise<RewriteRe
     throw new Error("Draft input cannot be empty.");
   }
 
-  // 1. Gather context from SQLite
+  // 1. Gather context from SQLite & VoiceDNA Profile
   const profile = getActiveVoiceProfile();
   const learnedRules = getActiveLearnedRules();
   const allDocs = getAllDocuments();
   const corpusTexts = allDocs.map((d) => d.raw_text);
 
-  // 2. Pre-extract invariance entities to inject into system prompt
+  // 2. Load VoiceDNA Profile and Fingerprint Rules
+  const fingerprintRules = getFingerprintRules();
+  let fingerprintRulesPrompt = "";
+  if (fingerprintRules.length > 0) {
+    fingerprintRulesPrompt = `\n### VOICEDNA FINGERPRINT RULES (APPLY THESE MEASURABLE WRITING HABITS):
+${fingerprintRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}`;
+  }
+
+  // 3. Pre-extract invariance entities to inject into system prompt
   const citations = extractCitations(draftInput);
   const equations = extractEquations(draftInput);
   const numbers = extractNumbers(draftInput);
 
-  // 3. Build Learned Rules section
+  // 4. Build Learned Rules section
   let learnedRulesPrompt = "";
   if (learnedRules.length > 0) {
     learnedRulesPrompt = `\n### USER'S LEARNED STYLE PREFERENCES (FROM PREVIOUS MANUAL EDITS - PRIORITIZE THESE):
 ${learnedRules.map((r, i) => `${i + 1}. [${r.category.toUpperCase()}] ${r.rule_text}`).join("\n")}`;
   }
 
-  // 4. Build Guardrails
+  // 5. Build Guardrails for citations, numbers, and equations
   let invariancePrompt = `\n### STRICT PRESERVATION DIRECTIVES:
 - TECHNICAL ACCURACY: Do not introduce unstated assumptions or alter factual claims.
 - CITATIONS: You MUST preserve all citations verbatim in their original format. Do not renumber or change brackets/parentheses.
@@ -68,24 +77,27 @@ ${numbers.length > 0 ? `  Required Figures: ${numbers.join(", ")}` : "  (No spec
 - MATHEMATICS & EQUATIONS: Preserve all LaTeX expressions, formulas, and symbols ($...$, $$...$$) without alteration.
 ${equations.length > 0 ? `  Required Equations: ${equations.join(" | ")}` : "  (No equations detected in input)"}`;
 
-  // 5. Build Synthesized Voice Guidelines
+  // 6. Build Synthesized Voice Guidelines
   const voiceGuidelines = profile?.synthesized_guidelines || "Maintain standard formal academic voice with analytical precision.";
 
   const systemPrompt = `You are "VoiceDNA", an expert academic writing assistant calibrated to write in the researcher's distinct academic voice.
 
 Your primary mission:
 1. Transform the researcher's draft notes or bullet points into a polished, publication-ready academic text for the section: "${sectionType}".
-2. Adopt the researcher's syntactic rhythm, vocabulary complexity, transitional connectors, and scholarly tone.
+2. Adopt the researcher's exact syntactic rhythm, vocabulary complexity, transitional connectors, and scholarly tone.
 3. NEVER copy sentences or phrasing verbatim from any training materials. Synthesize fresh language.
 4. STRICT INVARIANCE: Every single citation, number, measurement, and equation MUST be preserved with 100% fidelity.
 
 ${invariancePrompt}
 
+${fingerprintRulesPrompt}
+
 ### RESEARCHER'S VOICE DNA PROFILE:
 ${voiceGuidelines}
 ${learnedRulesPrompt}
 
-FORMATTING: Output ONLY the rewritten academic text. Do not add conversational introductions (such as "Here is your rewrite:") or metadata blocks. Use clean academic Markdown formatting.`;
+OUTPUT DIRECTIVE:
+Return ONLY the final rewritten text. Do NOT include conversational greetings, introductions (e.g. "Here is your rewrite:"), explanations, commentary, or fingerprint JSON. Output only the pure rewritten text.`;
 
   let userPrompt = `DRAFT INPUT TO REWRITE (${sectionType}):
 ${draftInput}`;
@@ -94,7 +106,7 @@ ${draftInput}`;
     userPrompt += `\n\nADDITIONAL USER INSTRUCTION:\n${customInstructions.trim()}`;
   }
 
-  // 6. Call LLM
+  // 7. Call Ollama / LLM Provider
   const rewrittenOutput = await callLLM({
     messages: [
       { role: "system", content: systemPrompt },

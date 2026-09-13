@@ -1,15 +1,34 @@
 "use client";
 
 import React from "react";
-import { Dna, Sparkles, BookOpen, Brain, Clock, Settings as SettingsIcon, ShieldCheck } from "lucide-react";
+import {
+  Dna,
+  Sparkles,
+  BookOpen,
+  Brain,
+  Clock,
+  Settings as SettingsIcon,
+  FolderArchive,
+  Terminal,
+} from "lucide-react";
 import { AppSettings } from "@/lib/db/queries";
 
+export interface OllamaStatusHeader {
+  running: boolean;
+  models: string[];
+  hasTargetModel: boolean;
+  command: string;
+  error?: string;
+}
+
 interface HeaderProps {
-  activeTab: "rewrite" | "dna" | "training" | "rules" | "history";
-  setActiveTab: (tab: "rewrite" | "dna" | "training" | "rules" | "history") => void;
+  activeTab: "rewrite" | "corpus" | "dna" | "training" | "rules" | "history";
+  setActiveTab: (tab: "rewrite" | "corpus" | "dna" | "training" | "rules" | "history") => void;
   settings: AppSettings | null;
+  ollamaStatus?: OllamaStatusHeader | null;
   onOpenSettings: () => void;
   documentCount: number;
+  corpusCount?: number;
   rulesCount: number;
 }
 
@@ -17,14 +36,13 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   settings,
+  ollamaStatus,
   onOpenSettings,
   documentCount,
+  corpusCount = 0,
   rulesCount,
 }) => {
-  const providerLabel =
-    settings?.provider === "openai"
-      ? `OpenAI • ${settings.openai_model || "gpt-4o"}`
-      : `Ollama • ${settings?.ollama_model || "qwen3:8b"}`;
+  const isOllamaRunning = ollamaStatus?.running ?? false;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
@@ -62,6 +80,23 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>Rewrite Studio</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("corpus")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                activeTab === "corpus"
+                  ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-semibold"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+              }`}
+            >
+              <FolderArchive className="w-3.5 h-3.5" />
+              <span>Corpus Manager</span>
+              {corpusCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800 font-mono">
+                  {corpusCount}
+                </span>
+              )}
             </button>
 
             <button
@@ -123,27 +158,42 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </nav>
 
-          {/* Right Action: Voice Learned Badge & Provider Pill & Settings */}
+          {/* Right Action: Connectivity Status Pill & Settings */}
           <div className="flex items-center gap-2.5">
-            {documentCount > 0 && (
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Voice Learned</span>
+            {/* Reachability Status */}
+            {isOllamaRunning ? (
+              <button
+                onClick={onOpenSettings}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 transition shadow-sm"
+                title="Local Ollama is running at http://localhost:11434"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-xs font-semibold">Connected to Ollama</span>
+              </button>
+            ) : (
+              <button
+                onClick={onOpenSettings}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/40 hover:bg-amber-500/20 text-amber-300 transition shadow-sm animate-pulse"
+                title="Click to view Ollama launch command: ollama run qwen3:8b"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span className="text-xs font-semibold">Start Ollama</span>
+              </button>
+            )}
+
+            {/* Optional OpenAI Indicator if explicitly activated */}
+            {settings?.provider === "openai" && (
+              <div className="hidden lg:flex items-center px-2 py-1 rounded-lg text-[10px] font-mono bg-indigo-950/80 text-indigo-300 border border-indigo-800">
+                OpenAI (Optional)
               </div>
             )}
 
             <button
               onClick={onOpenSettings}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition shadow-sm"
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition shadow-sm"
               title="Click to configure Model and AI Provider"
             >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  settings?.provider === "openai" ? "bg-indigo-400" : "bg-emerald-400 animate-pulse"
-                }`}
-              ></span>
-              <span className="text-xs font-mono text-slate-300">{providerLabel}</span>
-              <SettingsIcon className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
+              <SettingsIcon className="w-4 h-4 text-slate-400" />
             </button>
           </div>
         </div>

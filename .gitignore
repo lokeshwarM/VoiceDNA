@@ -62,6 +62,11 @@ next-env.d.ts
 *.sqlite
 *.sqlite3
 
-# local uploads & generated profiles
+# local uploads & generated caches
 /uploads/
-/data/
+/data/*.json
+/data/processed/*
+!/data/processed/.gitkeep
+/data/profile/*
+!/data/profile/.gitkeep
+!/data/corpus/.gitkeep

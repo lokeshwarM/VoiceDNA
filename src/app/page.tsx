@@ -1,24 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Header } from "@/components/Header";
+import { Header, OllamaStatusHeader } from "@/components/Header";
 import { RewriteStudio } from "@/components/RewriteStudio";
+import { CorpusManager } from "@/components/CorpusManager";
 import { VoiceMatrix } from "@/components/VoiceMatrix";
 import { TrainingPapers } from "@/components/TrainingPapers";
 import { LearnedRules } from "@/components/LearnedRules";
 import { HistoryViewer } from "@/components/HistoryViewer";
 import { SettingsModal } from "@/components/SettingsModal";
 import { AppSettings, VoiceProfile, TrainingDocument, LearnedRule } from "@/lib/db/queries";
-import { Sparkles, Dna, ShieldCheck, Database, Terminal } from "lucide-react";
+import { Dna, Database } from "lucide-react";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"rewrite" | "dna" | "training" | "rules" | "history">("rewrite");
+  const [activeTab, setActiveTab] = useState<"rewrite" | "corpus" | "dna" | "training" | "rules" | "history">("rewrite");
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   // App Data State
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [ollamaStatus, setOllamaStatus] = useState<OllamaStatusHeader | null>(null);
   const [voiceProfile, setVoiceProfile] = useState<VoiceProfile | null>(null);
   const [documents, setDocuments] = useState<TrainingDocument[]>([]);
+  const [corpusCount, setCorpusCount] = useState(0);
   const [learnedRules, setLearnedRules] = useState<LearnedRule[]>([]);
   const [stats, setStats] = useState({
     documentCount: 0,
@@ -44,6 +47,7 @@ export default function Home() {
       fetchSettings(),
       fetchVoiceDna(),
       fetchDocuments(),
+      fetchCorpusCount(),
       fetchLearnedRules(),
     ]);
   };
@@ -52,11 +56,24 @@ export default function Home() {
     try {
       const res = await fetch("/api/settings");
       const data = await res.json();
-      if (data.success && data.settings) {
-        setSettings(data.settings);
+      if (data.success) {
+        if (data.settings) setSettings(data.settings);
+        if (data.ollamaStatus) setOllamaStatus(data.ollamaStatus);
       }
     } catch (err) {
       console.error("Error loading settings:", err);
+    }
+  };
+
+  const fetchCorpusCount = async () => {
+    try {
+      const res = await fetch("/api/corpus");
+      const data = await res.json();
+      if (data.success) {
+        setCorpusCount(data.totalFiles || 0);
+      }
+    } catch (err) {
+      console.error("Error loading corpus count:", err);
     }
   };
 
@@ -142,8 +159,10 @@ export default function Home() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         settings={settings}
+        ollamaStatus={ollamaStatus}
         onOpenSettings={() => setSettingsModalOpen(true)}
         documentCount={documents.length}
+        corpusCount={corpusCount}
         rulesCount={stats.activeRulesCount}
       />
 
@@ -160,6 +179,16 @@ export default function Home() {
               fetchVoiceDna();
             }}
             activeRulesCount={stats.activeRulesCount}
+          />
+        )}
+
+        {activeTab === "corpus" && (
+          <CorpusManager
+            onRebuildComplete={() => {
+              fetchVoiceDna();
+              fetchLearnedRules();
+              fetchCorpusCount();
+            }}
           />
         )}
 
@@ -211,7 +240,7 @@ export default function Home() {
               <span>VoiceDNA</span>
             </span>
             <span>•</span>
-            <span>Academic Personal Workbench</span>
+            <span>Corpus Manager & Academic Stylometrics</span>
             <span>•</span>
             <span className="text-emerald-400 font-mono">Zero Verbatim Copying Guaranteed</span>
           </div>
@@ -234,7 +263,10 @@ export default function Home() {
       {/* Settings Modal */}
       <SettingsModal
         isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
+        onClose={() => {
+          setSettingsModalOpen(false);
+          fetchSettings();
+        }}
         onSettingsUpdated={fetchSettings}
       />
     </div>

@@ -103,6 +103,7 @@ export async function callLLM(options: LLMRequestOptions): Promise<string> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(120000),
       });
     } catch (err: any) {
       throw new Error(

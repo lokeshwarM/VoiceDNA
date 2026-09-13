@@ -1,0 +1,411 @@
+ALL env values i will add at finall stage and testing now we will proceed with building the thing , now initially we created whatsapp notifications and messages right , change it to telegram automation as it is completely free of cost
+
+this i should add in my env, so from where should i get those links
+
+For a text of 500 words checked ai detection where quilbot is giving 0 persent ai but grammarly is giving 100% ai which of them should I believe
+
+In campus drive i applied for dsdm role from that and then they asked these details to fill in a Google form
+
+Hey I got a concept , till now I didn't start a story just a concept or a line just am thinking to develop on that
+
+The concept is simple
+
+Let's take a character hero and villan , starting onwards we will proceed with hero right how villain enters and how hero overcomes and wins and audience travell with him , but villan is his oppensnt in everything but audience supports hero and at a point we start revela that villains back story , here for example take pushpa just to explain u , we travel with hero so we want a smuggler to win right , so in this back story it reveals that he is the main antagonist and who they thought villan is actually making good , like that it's not a saviour kind of template, but it's turning the audience journey and opinions to others and let them think in them selves who have to win, the one with whom they travel from earlier or the right one
+
+No I just thought a little diff actually audience supports a and a wins for example take a kills b audience satisfied at their best but there it reveals b backstory where a is the threat and b is fighting the threat a eventually lose as audience wanted earlier, it can make them think that. On one side perspective we can't choose that like that
+
+Hey I live in 3rd floor and. Thats the top floor and using jio sim and in my room no signal comes not even for calls but exactly on top of my room on terrace 5g comes and 25mbps speed came while I downloading a file
+
+Is there any way to get signal in my room 5g signals
+
+Hey I installed a new wifi setup in my room , but here people often say my wifi is hacked my wifi password
+
+Is that possible to hack wifi password
+
+In that case how it is hacked and how should I keep my wifi safe
+
+I mean am asking u for that ledger system wallet system i built no is that kind of things I need , am asking that not the pages or website in that am just asking this for my quant developer side to get full clarity about tabt
+
+That's already built and deployed backed in AWS and frontend in vercel and having 3 diff logins one for listerne  , user and admin
+
+To tell you I said my project right it's a
+
+I will explain work flow 1st
+
+User enters logins same google auth , and also otp based jwt, the. User will reacharge user has a wallets so recharge through razorpay gateway, select his mood and preferences and chooses voice or video calls and ai there which helps in smart matching and after ending call user is asked for review and ratings ai analyse reviews and ratings and for specific mood he gets a confidense score and for voice 2 rs and video 3rs deducted every minute for user in call and 70% of it adds to listener and 30% to plateforms wallets respectively, and from user reacharge to calls time amount deducted amount added to listener and platforms and listener withdrawal all is maintained in ledger
+
+But to show my skills what should I build as project
+
+Now not just these to leave forget all
+
+And am a btech cse core student and I want huge package what ever it might be I will focus on that so now u list all the field where I can get highest package, , high cgpa now increasing is impossible am with 8.2. That's it but I can learn stacks and implement projects production grade
+
+So think deeply and list all the paths
+
+So now how much I can expect take the scenario i explained earlier like all went well now notlu in full stack , but also game dev side over all in all list my package
+
+I have cleared all the round and interview went well and came to package discussion u r the recruiter now how much would u offer me
+
+Now getting internship is okay but am already in final year and companies will come placements drives so  after completing my mvp for this I will be started applying and solved 200 prblsm on leetcode and 50 are hard among them
+
+CGPA 8.0
+
+Dsa good
+
+Interships no
+
+Project
+
+Have done 2 projects other than this that are full stack project and backend deployed in AWS and frontend in vercel
+
+One project is : TraceLm where a user will sign up jwt google auth , and like chatgpt it will be there but there he can select models and chat for evary chat there will be given time s used latency like this kind of things and apart from chats page another is memory where it's like RAG and another page has dashboard where it shows over all usage with number and graphics and all like avage tokens input and output and average latancu over all anad also in graphics for every day waise and also models and providets wise
+
+And another project is my main where I used websockts, jwt, java spring boot, typescript, and etcc
+
+Because here it's not just batting after that innings batter becomes bowler and bowler becomes batter right so in that innings he has to score more and also they will have limited wickets right , 1st batsman also in 1st innings of tries to hit hard and. Lose wickets then he may loose the match
+
+That showing will be there only in quick matches not in tournaments or test or in any other modes
+
+Yeah we will show batter where the balls steps and in which direction at what speed will be show in graphics a side but if he turns of nothing will be shown except ball step location
+
+Here spamming everyball is not possible because , here for bowler also we will have spinners pacers and also he can select the place where it steps and at what speed and at what swng or at what spin
+
+For batting user will move batter sides and right and also swipes on the screen like in which direction he wants hit and on top inside corner in small map like view the field set will be displayed so batter can check positions of fielders , and also in a single direction there can be a defence and also a big shot so we add one button if he clicks that button before swiping for hitting it will be big shot if not then it will be a defence shot in that direction
+
+1st version am thinking is batter real and bowler and remaining all ai controlled and if striker changes to non striker then the user playing as the batter will have control to that new striker , for all 11 batters that user will only be there
+
+But also I want to know does it helps me in getting jobs does that adds value to my resume
+
+I mean real players means , suppose me and my friends 22 mem want to play game so here we join teams 2 teams and starts the game like real game but virtually
+
+A multiplayer cricket game 2d only for both mobile and pc versions all the players will be real players because in future to make it 3d now in 2d all the players are real players
+
+Hey I got up with a story
+
+It's not different or a completely new story
+
+It's a love story where hero is 7,8 years younger then heroine
+
+Can I tell the just main main points 1st not complete formation u don't interpret till I ask u to
+
+I will tell in Telugu and english mixed
+
+Hero and heroine are neighbours from childhood they used to play together and childhood they spend most of the tym together as kids and from then onwards hero fond of her
+
+Heroine also likes him but not as love or something but there bond like a cousin or like friendship, but heroes attraction is different and hero starts getting feelings as he grew older
+
+Like when hero joins btech heroine is doing a job and there heroine heroine had a relationship with one of her colleagues
+
+And she shares everything with hero from starting onwards
+
+From very starting he knows but he supports her feelings and supports her love , even though he suffers
+
+He suffers a lot but chooses her happiness over his , and heroines relationship got deep and she is so much connected emotionally with her lover
+
+And then after 4 years when hero goes to final year in btech heroine shifts from pg to a seperate flat with her lover and only hero and heroine s one best friend knows about this her relationship and this all
+
+Knowing this hero gets emotionally worsen but he didn't shows up that thing, but a college friend of he observes all and supports him so much in that situations and she is his bestfriend and they don't have any love feelings just best friends and actually one thing is hero joined that college because heroine recommended that because in campus placement there company goes there and she can help him with that in that way
+
+And there final placements time interviews happens and all are waiting for offer letters
+
+And hero gets an offer letter and on weekend hero plans to through a party to heroine as she guided him and invites her and she accepts, and when she on her way to restaurant hero due some emergency reasons cancels and he needs to go home for a week
+
+And when heroine returns back there she finds heroes friend that girl at her home , and the girl is looking suspicious around and started returns back, by seeing that girl heroine gets suspicious and went near that girl asks who are and what are you dng here and she in tension looks here and there and says nothing and again aks and that girl is sweating and tells wrong address and moves but while gng a paper slip fell from here in that it's written heroines address and her boyfriends phone number
+
+Hey till what are  thinking next could happen in my thought process and tell
+
+I will tell
+
+Wait, and that friend leaves in a vehicle and and heroine starts following her and she goes to the college hostel and at collygate heroine stops and she knows that's hero college, and she tries to connect with hero  and meanwhile earlier at her home she took photo of his friend, and but when she tries he didn't answered
+
+She is getting suspicious and without any confirmation how to ask her husband she is thinking, and indirectly she asks her husband that hey do you know this college and he says yeah I went to that college 10 days back for our company freshers recruitment as a recruiter
+
+And he asks y did u ask that, she says one of cousins (hero) studies in that college and just i want to know where the exact location is just for a visit like that she covers
+
+Now can you interpret my thinking and story , am thinking something however u interpret I won't change that just u tell what u thinking next gng to happen
+
+Here next after 2 days hero returns then heroine meets hero and share everything with him and hero goes to college to investigate and then heroine shares her photo which she forgot when near
+
+After seeing that , that seen cuts there
+
+And then from that afternoon to evening heroine tries to contact hero , hero keeps on rejecting and turns his mobile off
+
+The girl is not from past connection , the girl is his bestfriend right u confused which heroine took secret when she visited heroins house
+
+And evening hero calls heroine and asks her to come to a place along with her boyfriend and it's an open place like outskirts
+
+When the reached there and approach hero , he then starts hitting her boyfriend so furiously, not normally angrily saying how dare u do that , how dare u like that for almost 10 min heroines boyfriend tries to resist but couldn't hold heros punches and hero stops when heroine interpret and comes in between
+
+Hero shouts i don't spare u I will kill you, heroine stops him and questions what happened tell me what's going onn
+
+Hero shouts in grief and shouts u want to know what this bustard did right , u want to know that right, he molested an innocent girl who came for interview, he kept his hands here see here in this place by telling that he kicks hardly on boyfriend chest the boyfriend falls back 4 feet away and heroine shocks and sadness shockgrief all at once she can't say a word, hero continues the girl u saw at your home she is my best friend and how can you touch my girl like that by telling hero sits on his chest and starts hitting his face which is already bleeding
+
+No cctv footage when hero sees image there scene cuts right that time hero goes to his friend and asks about it and emotionally broken his bestfriend shares what happened with her , no proofs are shown at this point , because he is not a police to ask proofs , he knows her very well and she won't tell lie and the reasonshe went to his house is he wrote his address and phone number on paper and gave to her and blackmail he rto come to his house , that shows purely emotional and grief , in this moment no one thinks of proofs and i don't show now that will break my screenplay and emotional depth in the scene and also the suspens till hero reveal in the fight , if audience know that from earlier they won't feel that emotion at this particular time
+
+Yeah I have that in my mind full story with full confidence and till now tell how u felt , i didn't wrote full drama just went on telling you like key points which are gng on
+
+Actually I told you the points in my screenplay order only without drama till now
+
+This reveal is my interval
+
+And in my mind I have 2 endings one will be like a happy ending and another will be like a sad ending happy means they get out of trauma in some ways like i designed and a kind of sad ending also , which one do you prefer
+
+Okay 1st i will move towards sad ending one am telling earlier because u can try to guess when I ask in right direction and then also my story is beyond yours guessing means then only it would an engaging one right
+
+Okay now am proceeding don't interpret till I ask
+
+Immediately after interval the flashback is played , it's showing to the audience to the interview day , on that day from morning onwards they are clearing the rounds and for final round it's happening around evening 7pm heros interview completed at around 6.30pm and his bestfriend went and all the students went from college and she only there remained to complete the interview and not only students but also faculties and all left only the placement department 2 faculties 1 mail and 1 female left in the campus
+
+And hero also there inside the campus to go with her after the completion of her interview
+
+And at 6.30 hero came out his bestfriend went in and hero kept roaming in corridor here and there Waiting for his friends interview to get completed, and in interview panel there are 2 male and 1 female inside the room and student is heros friend
+
+And in campus only these are left behind
+
+So now can you interpret what I may continue here am not gonna change my thinking
+
+And around 6.40 the faculty members need to go to another floor as they need to shutdown some systems and store some files and lock it before they leave
+
+Now in this floor outside hero roaming in corridors and inside interview room along with his friend 2 maile and a female interviewer
+
+And in between interview female interview gets. A call and she goes to another corner of the room for speaking the call telling her colleagues to continue the interview
+
+Then one of the male interviewers says she is your sister right , she is one of our best employee
+
+And the interview gng on and the female calls the another employer other than heroines boyfriend saying something urgent and someone is on call
+
+Now at the interview table only his bestfriend and heroines boyfriend are there hero saw this from a window but just in casual way and didn't gave any attention and just roaming as listening 🎧 music in his earphones and roaming in corridor
+
+And then suddenly power went off full darkness
+
+After a minute at heroines boyfriend came backside of heros bestfriend and came bend down and whispered if you make noice or shout then ur sisters job will be layed off and you won't get job also
+
+Before the sentence even completed 2 hands from her behind reached 2 shoulders and slowly moving into her dress and reached her chest and started molesting her in the darkness the unknown hands and her suffering was known by nobody almost for 5 min and when taking hands took her locket from neck and told good nice cooperation and gave a slip and when a call come to this address and and take your thing and keep it a secret or else your and your sisters both career will be ruined this one also whispered and took hands off and left her like that in that darkness
+
+This what heros friend told to hero when he reached her and asked and then the interval sequence came by learning this
+
+And i forgot to tell that the locket is so much precious to her this will be present in the 1st half drama , so u won't feel it came in between like taht
+
+Now cuts to  the current time line where hero is explaining all this we saw till now, hero's friend told her perspective to him what happened inside now what we saw also added heros perspective so we know what happened where outside and inside
+
+Now coming to current timeline in the outskirts hero is sitting on a stone with grief and 10 feet away heroines boyfriend on the ground full bleeding his face and mouth and with full wound and inbetween both of them heroine standing in confusion and shattered, and hero in that grief also looking at heroines boyfriend, he just moves a bit on ground and sees that's it hero jumps from the stone and with grief runs and kicks in his stomach shouting how dare you to touch her. , immediately heroine grabs him and push hero back , but he is out of control with her full effort and ful strength grabs him and pulls aside and request to stop once , then he Stops , and shouts at her after doing all this how can you spare him
+
+She says wait I will ask him goes near to him and asks is it true
+
+He didn't answered tell me is this all true but he barely manage to open eyes and unable to speak , heroine shattered and her eyes water rolled and asking did you do that , but he can't answer hero in furious that bastard won't answer like that leave him for me telling this he comes near but heroine stands and shouts at heroines enough, that's enough he will die if you do like that , for that thing I will kill also I will not spare him, heroine says 1st let him speak , he is not even in that condition and shouts if he has done really i will not spare him but this one time for me take him to hospital, after that if is guilty i will not stop u , please do this once for me she requests
+
+They take him hospital in emergency accident case they join him in icu and doctors says it will take time for him , in the hospital and the discussion goes like this between hero and heroine
+
+U want to save that bastard and u u don't believe me, no not like taht am seeing him for years and am unable believe that kind of things from him, than me and my friend are lying or what , no am not saying like that and u don't understand my situation right now I want the truth 1st , then hero says if u want the truth then come with me and takes her to his bestfriend and and she says what happened, hero says to heroine look into her eyes didn't u find the truth??? Heroine shattered and but has small hope on her boyfriend and 2 days visiting hospital along with hero and his condition is unstable, and his family got to know about accident (they joined in hospital as accident right) .. so his parents are looking after him in hospital but heroine along with hero visiting hospital
+
+After 2 days in her house in her boyfriends one of the rack she saw a locket , that didn't came out just like that , but she wants to shift to pg in that situation she is not able to stay alone so she is packing and found the locket which open inside 3 photos Heros bestfriend, her sister and her mother,
+
+Till here how much screen time worth drama i can written without making it lengthy
+
+And now Locket also became a plot point right
+
+Meanwhile these 2 days while gng to hospital he went with heroine, but remaining time he is with his bestfriend giving her support he stays all day with her and learns that she is even in that trauma in nyt times also by her roommate and goes there and takes her out for some fresh air in that nyt also , the only place she could feel safe in the whole world is our hero, now on bike he took rides on nyt the feeling after sometime for her like , in oopiri movie when karthi takes nagarjuna on bike for the 1st times he feels free right the exact same way his bestfriend feels that moments and we will potrah in that way only on screen
+
+Now Interpret
+
+Don't interpret , on second day nyt rude also same feeling for her this tym more safety slowly rest her face on heros shoulders and tears from her eyes rolling off
+
+He observes that and slows down and stops bike and asks hey what happened now , hey look at me don't think about that
+
+She says ,haaa, and continues emotionally, if anybody finds out what happened with me who would stay with me , hero tells don't think that way , am here right right for u, look at me ,am I not there to look after u , do u think am i gng to leave u look at me and with his hand holds her chin and lifts her face up , she is sitting he is standing actually now they look directly into eachothers eyes , now hero tells , what ever I might be or what ever it might gonna happen am staying withu. And not gonna leave okay , understand, telling that hugs(not romantic hug)her head to his chest and and she says  , hmmm, emotionally
+
+And after this nyt scenario next day heroine finds that Locket ,
+
+This bike travelling happening in that 2 days nyt right after that 2 days she fount the locket
+
+Now on this day heroine goes to heros friend and asked which dress did he wore on interview day and finds out that in the same shirt she found the locket
+
+Now heroine completely breakes down, shattered and completely convinced that he is the one who did , hero is furious to leave him alive but he can't do anything as his family is looking after him in hospital and they can't even reach directly and also they have a police complaint way, but they did go because it will further damage the girls name and her trauma increases
+
+And when heroine convinced the truth then emotionally she asked her how did you bear that without making sound,just for a job, u could get many outside, but this trauma it will not leave u,
+
+She answers not only mine but also my sisters job is in risk , I can take risk but my mom is in hospital suffering with a heart disease and right now for treatment and all only source of earning is my sister, that made me keep my mouth shut, and that locket is the last gift given by my mother to me on my last bday , she add emotionally and her eyes rolls water and heroine hugs her and consoles , both girls eyes are rolling with water
+
+No no after that interview 1 week hero went out of coverage right , that is for this reason only for hospital alongwiyh his bestfriend sister , because the next day of interview she got full fever because of that trauma , hero knows only about fever and her family there , that's just a 3 or 4 min scene where surgery happens and her mother becomes stable , but in the meanwhile that time
+
+These things happens goes to heroines house with adress slip, hero not reachable and all ,So now review till here whole story
+
+And in the drama in 1st half we can see that hero knows his bestfriends sister like she comes to clg to meet sister like that and like that , that can convince that for mother surgery he went along with her for week
+
+Best friends sister is not the heroine, heroine is heros neighbour
+
+Here right now at heroine consoling heros bestfriend right but internally she is also damaged right
+
+But from past days because of hero hero best friend is now a bit better , and from surgery on wards she didn't met her mother because if she is like that again her mother health may affect but now hero make are some what normal and take her to her village along with heroine because at this situation he doesn't want to isolate heroine, so gets there and now seeing her healthy mother much more relieved heros bestfriend
+
+Now hero goes to his bestfriend and hugs as like earlier way and tells I will settle things and come okay u promise me that u won't think of it and look after aunty she promises but she feeelss much more safe and comfortable in his arms and she also grabs hims tightly for 5 min and then releases , he says don't worry, I will come again, this all happens in his bestfriends house meanwhile heroine and best friends mom are in backyard, hero and his bestfriend went inside for tablets and this scene happens
+
+How u feel about this
+
+5 min means in there time 5 min , not in audience time , inside movie it's 5 min , in audience it's around 20sec
+
+Now review
+
+What am planning next any guess
+
+In the meanwhile before the go to Village we show another shot in the hospital bed only that boyfriend is there on bed for hims something like remembering in dream we show the interview incident in flashes to keep engaged and hitting him alsoin flashes for him,
+
+Like his in hospital we show his mind voice calling for herioin and telling I didn't do that , earlier when hospital flash dream like came no there it'self and when he said I did not in his mind voice in that flashes whe show another. Interviewer on another corner of the room , this is only visible to audience no other characters know at that time
+
+And from village they return hero and heroine, on the way heroine breaks down and cries and cries hero could not able to console her
+
+It fells nyt as they stopped in mid way for almost 4 hrs and stills she is not stable and tries consoles and then they didn't even ate right goes to nearby town and have some dinner and takes a room for rest and decides to move next day morning and in that room also 2 bedded, after changing dresses and all , she is like that hero goes to her room and she cries on his shoulder and he there itself sleeps with her , she sleeps on his shoulder on that bed like that there happens like that , in that crying she accidentally tells how could that man be like that , look at u even with the person u love u don't take advantage of situation and , look at him he with innocent people and cries and I loved that kind of person tell
+
+Visual of that room scene is like crying women with her father in that way only showed
+
+But holding her like that hero gets old thoughts of love for her in mind but doesn't take advantage but keeps his hand on her head and consoles
+
+And she sleeps by keeping her head on his shoulders and chest and he keeps looking at her even after she slept and then morning happens
+
+And directly they go to hospital now he is able to speak in hospital, goes and meets as friends with bouque as his family their and she accuses him, but her boyfriend holds her hand and says it's not me , I didn't do anything, she says shut up, he says there is another person in the room , and also her sister is there in the room , she takes her hand off and stop ur lies , i found her locket in your shirt pocket and leaves from there hero and heroine, but after going out  , she tells hero that we don't have any evidence against him , we should gather that 1st says and they goto heroines room where it's is a single bedroom and with attached bathroom in bedroom heroine went far bath hero slept in the bed as he has no sleep in the nyt, after she freshen up prepared some food and waked him up and then they went on for investigation, they reached his bestfriends sister and asked what happened on that interview day , when she is talking the call , she doesn't about this so they don't tell this but tells something happened outside the room for that they say , she says I got a call from company I went a side and they asked to give to hr so I gave phoen to hr and went washroom out side that room and then power went off
+
+That means at that time 2 men are inside the room
+
+And they questions another hr interviewer about that day , he says speaking call and power went offf , but according to the girl heros friend, heroines boy friend is opposite to her remaining went somewhere she didn't saw , power went off molestation happened and after 15 min power came and then there is no one in front after a min all 3 came and sit infront of her
+
+They reached out to the faculty who were there and asked why the power went off at that tym and for that tooo long , they replied usually if power goes security ons the generator but college time completed and all went just we are there and only one security who is at main gate is there so for him to come here and on it took that much time
+
+Now can u review
+
+And then they asked watch man what happened he said someone short Circuit the power supply that he said or else it would have been in 5 min it would be turned on he said
+
+At which floor the short Circuit happened, they asked , watchman replies the door where the faculties are there
+
+These are the things they gathered but didn't able to figure out what happened and heroine is getting mad returns home same like yesterdays emotional support they sleep
+
+But here they are sleeping like that for her support but inside heros earlier feelings are running in mind subconsciously
+
+And they again go and asked the watch man stressed this tym remember remembering he said yeah I heard some sound of moaning like sound from the floor where faculty went, actually he says the which floor but he don't who there in that floor , hero knows that, and she asked after how much tym faculties told u turned on powers , watch man says no one told me to turn on the power and it's me myself who turned the power on
+
+Now can you interpret and guess
+
+So now heroine reframe the thing happened, call came her sister went the. Hr went, his friend didn't saw them she thought only her boyfriend is the one left in room then power off somebody came and molested then after 5 min gap then power came and all came so what happened who did this here new theory
+
+But hero in furious says we found her locket in his shirt and he is the one for all this
+
+But then his bestfriend calls and speaking like in low , he says his friend he will be back tomorrow morning and leaves to Village
+
+Hero goes to Village and in nyt they have dinner and her mother sleeps but then hero and his friend goes to varanda and there sits and now again she gains safety feeling and he is leaving to wall sitting down and she is leaning towards hims and she tells if you are with me that's enough for my life and I feel much safer with u like this by hugging hm.from side like her head comes on his chest , he also puts his hands after thinking a 2sec and tells then I will be like this for forever
+
+It's a confession scene from a friend, and the love it came from the situations not by looks or something
+
+But meanwhile heroine there collapsed as nothing figured out and no emotional support there as hero left
+
+And that nyt his bestfriend after confession like that only hugged hims ad slept hero also hugged and slept but mid nyt he got thought of heroine, so he wakes up and tells his bestfriend I will come again now had some work okay am with you and gives a hug and leaves
+
+He reached there around mrng 5 overnight jouney but what he saw is messed up room and heroine without sleeping and like a mad person she became
+
+And the thing is she consumed alcohol that nyt when hero was away
+
+And in alcohol mode hero reaches her and tries to control her ,he is not controlled and starts questioning tell  me how can he do that ,
+
+Tell me ,
+
+Not only him there another. Mem another moaning sound that much planning and dng with a student how can ,
+
+And tell , ur also a man but these are animals, u love me i know from childhood but u didn't took advantage even when there is chance but these animals
+
+He asked how u know that i love , she says am a girl i know how a person is looking at me but u r an innocent boy
+
+Hero goes to her now we are not going to leave them okay now come with me and takes her to bed and sleeps
+
+And then at evening she wakes up alone in the room hero not there
+
+, and she gets a news that her boyfriend recovered and he calls and tells that nyt I did not do anything when power went off i went outside, hear some sound and I went in that direction and when power came i returned, then hero calls heroine says that bastard is missing he is not in hospital
+
+She says come home
+
+And now only suspicious one is the HR because when boyfriend went means only person remaining in room
+
+They went and questioned no useful they want to check cctv footage secretly goes and in footage they found that the reason for shortcirvut is  the placement faculty they did but at that place cctv footage they deleted but in a far place cctv it recorded partially and when power came from that place only hr came out then after sometime other facilities also and that's the exact place where watchman said moans came
+
+Now again all suspicion turned toward her boyfriend because theory is hr fucked the lady faculty there now who is remaining
+
+What's next can you Guess
+
+Now heroine calls her boyfriend and tells enough don't frame stories again we have proofs and all shows that the remaining one is u  alone, there some argument type nervous cuts the call and with headache she faits as drunk earlier no food and now hero tools her home and wakes her up she thought something is not correct but in her weakness she ates and she sleeps again and then at nyt hero leaves to Village leaving her a message will be back in a day take rest
+
+But after waking up she sense something unusual she sees the message, now again she doesn't know what to do but has 50 plus missed calls from boyfriend, calls again she accuses him , the he tells in between convo , the one who does will definitely hide why the hell would he expose, u r seeing for the exposed one , once look for the hiding one u will figure out
+
+She kept thinking and went infront of mirror and found that her dress has been changed, mind blank flashed what the fuck, searched for the dress she wearing not there searching in car and found under car back seat torn.
+
+What happened she thought she took that inside and kept in that rack while she saw his bestfriend shirt where locket found but remembered that she had wahed and folfed and kept there but when she kept there no locket is there but after he exposed it got there how , now everything is flashing, after fight and hospital hero came with her to the room and no one else came other than him,
+
+And the thinking for the hiding person from start , according to what he said in college 2 faculties in another floor 3 interviewes in side best friend inside watchman at gate
+
+Lady interviewer went washroom
+
+Hr went to lady faculty
+
+Her boyfriend went for checking outside and who is missing in all these  scenarios and only one person is hiding in all these and he is none another than
+
+And now in heroines theory what happened is power went all went outside hero came in and he also knows that her sister is interviewer threatened because he also knows her situation utilised and then he is the person who knows locket is important to her took that , and wrote heroines address because in that way he can seperate them and get close to heroine
+
+And also in her room she found a sheet of sleeping pills
+
+Not only torn dress everyday she sleeps along with him some or the other is diff a day bra a day undergarments like that but in that emotional state in sleeping pills effect she didn't able to observe that and also before she waking only he waking and giving food  and realise he is not sleeping while bathing in her attached bathroom he s watching her and in bathroom she found a strap of sedative drug , earlier which was mixed in the drink she drank that's actually his planning call was fake he came room and mixed that drug in whiskey in her room left to Village and tbats the reason remembered and started in midnight from there as he wants to reach before the drug effect goes
+
+That scenes are now showed while she is re framing everything happened but not in slow paced drama type but like twist revelation what actually happened in a fast paced one
+
+All montages with background explanation by heroine as
+
+She finds a point
+
+Just like in drushyam venkatesh movie how ig reframes at last with montage shorts from all rambabu stories and her cluse and suspicions like that
+
+Now she just opens whatsapp in heros chat she founds a video that they both bath together full nude that happened wen sedative drug took from whiskey...
+
+And almost every nyt he did that with her , even when she faits it's not normally he gives her water with mixed sleeping pills when she calls her bf and tells all points are towards you in fear of getting caught as he is now healthy and he can also tells or help her so one last tym he did it in car and she saw in  took her nudely to room and dressed up she woke up and ate and sleep that time 2 times suspicious I told before day nyt and next day morning before day nyt her dress diss as a dress torn in car , and next day morning also again dif one and the one nyt has is on the floor
+
+And now all dots are connected but his contacts are not where , because he changed all went to Village he took his bestfriend and heroines mother to some other place and changes there contacts also heroine with her boyfriend searched for her and no evidence or proof of him nowhere and and not even heros bestfriends sister is reachable she resigned the job that day itself and changed all the contacts, despite multiple times raped heroine couldn't do anything
+
+And heroines theory completed and all now the thing actually happened revelation to audience
+
+On that day hero casually roaming outside listening songs and waiting for his friends but got a suspicion on his faculty and followed them and they planning that hr will come but male said in water bottle there i mixed sedative i can't control and we already offered I will and we can shoot the video , but here what happened is same water his bestfriend sister also drank and went into bathroom in that exact direction of that floor sees hero in corridor he also see her in washroom wants self control but faculty manges short Circuit hr goes there moaning sound, and bestfriends sister could control goes there and joins hero silentlu keeps recording on his phone. And goes away and before power goes off when he heard sedative he wants to know how that would so tasted some , now 4 mem in one place having sex , and heroines boyfriend went out and hero's inside raising couldn't control and went to his bestfriend and did and while doing that he got a thought of heroine so wrote address and planned like that , but after that his feeling for his bestfriend never went that way felt guilty hitted himself for dng like that but mistake is mistake
+
+But the thing with heroine is different
+
+And after that he never crossed with friend but did all with heroine and there is a reason for that
+
+But a thought came to him his attraction crush from child hood he gonna miss her till life I can not be like that, his mind is striking like a mad animal, what to do what to do , and made up all this from fighting at interval to till climax and , when he thought this would be revealed he escaped
+
+And here in montages shown his child hood is not love story it's lust story, as when he is a kid mostly he played with her and in her room stayed but she is matured but her secret ly sees her changes , bathing from pin holes of doors like that while growing also he grew lust on her , and became animal , the same looks in 1st of shown for love are not love it's lust
+
+Every montage shows pays off for the love shots shown as lust
+
+In 1st half we should his character what outside is seen to others now revelats in motage shots how he felt
+
+And also her beating her boyfriend in and shouts how dare you touch her not for best friend , but touching and living with the one he wants badly from childhood, that also in his perspective we show in montages
+
+And now for escape he has video so bestfriends sister also resigned everything as he told , and his bestfriend now lover right wouldn't say no to him, then there mother where ever they are there she would be right
+
+He made mistake with his best friend realised felt bad , but also at that time he did he got a pleasure and he wants that more and more and now his eyes turned to his crush as he wants her anyway then he wants this with her, but felt sorry for friend because she knows his suffering and supported him(she thought love suffering but his is lust suffering that diff) anyhow stood with him and doing that for such person he felt so bad , and for what ever he did for his bestfriend and heroines family is genuine for them except the last escape plan , that's was for his escape he planned
+
+Now review and rate this in all the aspects whole story
+
+That's clues and execution i will look into it and make better in my writing tell me , if a film was made how much would it's budget may reach min to max
+
+Actor suhas best suits for hero role am i correct in Telugu and medium budget
+
+Here y I choose suhas is he already played hero roles as well as psycho killer villain roles , in HIT 2 movie till climax he is just seen a boyfriend to a girl and in climax revelas that he the deadly psycho killer
+
+In colour photo we can see him an innocent lover who suffers but in another movie another level psycho killer
+
+Save this story in my chat
+
+And for elder herioin anupama parameshwaran or thapsee and for bestfriend role mamitha baiju or anaswara rajan
+
+As hero if we have basil joseph and heroines boyfriend of ee have suhas then there every would believe suhas did that he can pull off right
+
+But am not a director and a student who is css final year now need to get a job and this story just stays with me i as my script that's it
+
+I mean if I write full story then am focusing on studies only but is there any way to sell story as a script writer not as director as part time of side work, I can do that better and it's a cup of tea for me , the story which I shared with you till now it's just a 15 min creation that too in a flow initially thought of rom com in proceedings ideas changed and this came in 15 tp 20 min but due to my typing speed it reached slowly to you
+
+Hey instead i want to make an anime movie on this
+
+Here for anime we can have broader things like give them powers and all also , core plots same but the situations changees like instead of molestation some other more brutal, in climax also instead of rape some brutal things and remaining twists and turns connections maintaining them for emotional hight

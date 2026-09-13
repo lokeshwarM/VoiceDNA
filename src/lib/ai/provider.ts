@@ -88,6 +88,7 @@ export async function callLLM(options: LLMRequestOptions): Promise<string> {
       stream: false,
       options: {
         temperature,
+        num_predict: options.maxTokens || 1024,
       },
     };
 
@@ -103,7 +104,7 @@ export async function callLLM(options: LLMRequestOptions): Promise<string> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(180000),
+        signal: AbortSignal.timeout(300000),
       });
     } catch (err: any) {
       if (err.name === "TimeoutError" || err.message?.toLowerCase().includes("timeout")) {
@@ -127,10 +128,18 @@ export async function callLLM(options: LLMRequestOptions): Promise<string> {
     }
 
     const data = await response.json();
-    const content = data.message?.content;
+    let content = (data.message?.content || "").trim();
+    if (!content && data.message?.thinking) {
+      content = data.message.thinking.trim();
+    }
+    if (!content && data.response) {
+      content = data.response.trim();
+    }
     if (!content) {
       throw new Error(`Ollama returned an empty response for model '${model}'.`);
     }
+    // Strip <think> tags if model embedded them directly into content
+    content = content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     return content;
   } else {
     // Optional fallback provider (OpenAI) if user explicitly switched
@@ -201,7 +210,7 @@ export async function testProviderConnection(settings: AppSettings): Promise<{
     const reply = await callLLM({
       messages: testMsg,
       temperature: 0.1,
-      maxTokens: 10,
+      maxTokens: 120,
       overrideSettings: settings,
     });
     return {

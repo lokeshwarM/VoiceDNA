@@ -61,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
                   VoiceDNA
                 </span>
                 <span className="text-[10px] uppercase font-mono tracking-widest px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                  Academic MVP
+                  Academic Assistant
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">Personal Style Learning & Rewriter</p>

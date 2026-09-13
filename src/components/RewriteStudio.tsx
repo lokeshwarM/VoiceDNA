@@ -43,14 +43,6 @@ const SECTION_OPTIONS = [
   "General Academic",
 ];
 
-const SAMPLE_DRAFT = `Here are my rough notes for the methodology and results:
-- We tested our distributed caching algorithm on 500 nodes (N = 500) under variable network delay.
-- The baseline PBFT method [1] got bogged down with O(N^2) messages.
-- Our approach uses threshold signatures (Vaswani et al., 2017) to drop latency to 120 ms and improve throughput to 94.6% accuracy.
-- Loss function: $L_{total} = \\lambda_1 L_{CE} + \\lambda_2 L_{KL}$.
-- The statistical variance was negligible, showing p < 0.001 across 10 repeated runs.
-- Also memory consumption decreased by 35.8% compared to [2].`;
-
 export const RewriteStudio: React.FC<RewriteStudioProps> = ({
   initialDraft = "",
   initialOutput = "",
@@ -191,12 +183,6 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleLoadSample = () => {
-    setDraftInput(SAMPLE_DRAFT);
-    setSectionType("Methodology & Experimental Design");
-    setCustomInstructions("Emphasize algorithmic scalability and computational rigor.");
-  };
-
   // Handle Ctrl+Enter shortcut
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -221,15 +207,6 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
             </span>
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={handleLoadSample}
-          className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium hover:underline transition"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Load Sample Notes with Equations & Citations</span>
-        </button>
       </div>
 
       {errorMessage && (
@@ -418,7 +395,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
                 <FileText className="w-10 h-10 mb-3 text-slate-400 opacity-60" />
                 <h3 className="text-sm font-semibold text-slate-300">Ready for Transformation</h3>
                 <p className="mt-1 text-xs text-slate-400 max-w-sm">
-                  Enter draft notes or load a sample on the left, then click "Transform into My Academic Voice".
+                  Enter your draft notes on the left, then click &quot;Transform into My Academic Voice&quot;.
                 </p>
               </div>
             ) : loading ? (

@@ -5,9 +5,10 @@ import { StyleDNAMetrics } from "./extract";
 /**
  * Loads data/profile/voiceDNA.json from disk and converts it into reusable fingerprint rules.
  * Does NOT store or return previous sentences — only generates generative style directives.
+ * Returns empty array if no profile or documents exist.
  */
 export function getFingerprintRules(metricsOverride?: StyleDNAMetrics): string[] {
-  let metrics: StyleDNAMetrics;
+  let metrics: StyleDNAMetrics | null = null;
 
   if (metricsOverride) {
     metrics = metricsOverride;
@@ -16,32 +17,37 @@ export function getFingerprintRules(metricsOverride?: StyleDNAMetrics): string[]
       const profilePath = path.join(process.cwd(), "data", "profile", "voiceDNA.json");
       if (fs.existsSync(profilePath)) {
         metrics = JSON.parse(fs.readFileSync(profilePath, "utf-8"));
-      } else {
-        metrics = getDefaultMetrics();
       }
     } catch (err) {
-      console.warn("Could not load voiceDNA.json, using defaults:", err);
-      metrics = getDefaultMetrics();
+      console.warn("Could not load voiceDNA.json:", err);
+      return [];
     }
+  }
+
+  // If no metrics or no words analyzed, return empty rules
+  if (!metrics || !metrics.corpusSummary || metrics.corpusSummary.totalWords === 0) {
+    return [];
   }
 
   const rules: string[] = [];
 
   // 1. Sentence Cadence Rule
   const avgLen = metrics.sentenceLength.averageWords;
-  if (avgLen <= 16) {
-    rules.push("keeps compact, direct sentence length (averaging ~14-16 words); avoids runaway compound sentences");
-  } else if (avgLen >= 26) {
-    rules.push(`constructs expansive academic sentences (averaging ~${Math.round(avgLen)} words), developing multi-part reasoning before concluding`);
-  } else {
-    rules.push(`keeps moderate sentence length (averaging ~${Math.round(avgLen)} words), alternating concise declarative claims with detailed elaborations`);
+  if (avgLen > 0) {
+    if (avgLen <= 16) {
+      rules.push("keeps compact, direct sentence length (averaging ~14-16 words); avoids runaway compound sentences");
+    } else if (avgLen >= 26) {
+      rules.push(`constructs expansive academic sentences (averaging ~${Math.round(avgLen)} words), developing multi-part reasoning before concluding`);
+    } else {
+      rules.push(`keeps moderate sentence length (averaging ~${Math.round(avgLen)} words), alternating concise declarative claims with detailed elaborations`);
+    }
   }
 
   // 2. Thought Development / Paragraph Expansion Rule
   const avgParaSentences = metrics.paragraphLength.averageSentences;
   if (avgParaSentences >= 4) {
     rules.push("expands thoughts before concluding; develops propositions with explanatory context and implications rather than abrupt stops");
-  } else {
+  } else if (avgParaSentences > 0) {
     rules.push("maintains tight, modular paragraphs focused squarely on a single discrete concept");
   }
 
@@ -61,7 +67,7 @@ export function getFingerprintRules(metricsOverride?: StyleDNAMetrics): string[]
   const clauseDensity = metrics.clauseDensity.averageClausesPerSentence;
   if (clauseDensity >= 1.7) {
     rules.push("favors multi-clause compound sentences with qualifying subordinate clauses (e.g. 'provided that', 'whereas', 'because')");
-  } else {
+  } else if (clauseDensity > 0) {
     rules.push("prefers streamlined syntactic construction with linear, un-nested clauses");
   }
 
@@ -69,7 +75,7 @@ export function getFingerprintRules(metricsOverride?: StyleDNAMetrics): string[]
   const ttr = metrics.vocabularyRepetition.typeTokenRatio;
   if (ttr >= 0.35) {
     rules.push("avoids ornamental vocabulary; employs precise, unpretentious domain diction with consistent terminology");
-  } else {
+  } else if (ttr > 0) {
     rules.push("utilizes focused recurring domain terms for conceptual consistency");
   }
 
@@ -79,7 +85,7 @@ export function getFingerprintRules(metricsOverride?: StyleDNAMetrics): string[]
     rules.push("favors causal transitional signposts (e.g. 'consequently', 'therefore', 'thus') to underscore results and logical deductions");
   } else if (ratios.adversative >= 30) {
     rules.push("favors contrastive transitions (e.g. 'however', 'in contrast', 'conversely') to frame analytical counter-perspectives");
-  } else {
+  } else if (metrics.transitionFrequency.densityPer100Words > 0) {
     rules.push("uses disciplined transitional connectors to signpost shifts in argumentation without over-saturating prose");
   }
 
@@ -96,43 +102,4 @@ export function getFingerprintRules(metricsOverride?: StyleDNAMetrics): string[]
   }
 
   return rules;
-}
-
-function getDefaultMetrics(): StyleDNAMetrics {
-  return {
-    corpusSummary: { totalFiles: 1, totalWords: 1000, totalSentences: 45, totalParagraphs: 8 },
-    sentenceLength: {
-      averageWords: 22.4,
-      medianWords: 21,
-      minWords: 6,
-      maxWords: 38,
-      stdDev: 6.2,
-      distribution: { shortPercent: 20, mediumPercent: 60, longPercent: 20 },
-    },
-    clauseDensity: { averageClausesPerSentence: 1.8, subordinateClauseRatio: 0.55, coordinationRatio: 0.25 },
-    paragraphLength: { averageSentences: 5.2, averageWords: 110, totalParagraphs: 8 },
-    transitionFrequency: {
-      densityPer100Words: 2.3,
-      categoryRatios: { causal: 35, adversative: 25, additive: 20, sequential: 12, emphasis: 8 },
-      topTransitions: [{ word: "consequently", count: 8 }, { word: "furthermore", count: 6 }],
-    },
-    clarificationFrequency: {
-      densityPer100Words: 0.35,
-      occurrencesPer10Sentences: 0.8,
-      totalClarifications: 4,
-      topMarkers: [{ marker: "specifically", count: 3 }],
-    },
-    punctuationHabits: {
-      semicolonsPer100Words: 0.22,
-      colonsPer100Words: 0.12,
-      emDashesPer100Words: 0.18,
-      parenthesesPer100Words: 0.45,
-      commasPer100Words: 4.8,
-      quotesPer100Words: 0.15,
-      questionsPer100Sentences: 0.2,
-    },
-    vocabularyRepetition: { typeTokenRatio: 0.48, lexicalRedundancy: 0.52, hapaxLegomenaRatio: 0.51 },
-    workflowExplanationTendency: { densityPer100Words: 2.1, proceduralMarkerCount: 14, tendencyScore: 52 },
-    timestamp: new Date().toISOString(),
-  };
 }

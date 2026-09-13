@@ -102,33 +102,6 @@ export const TrainingPapers: React.FC<TrainingPapersProps> = ({
     }
   };
 
-  // Helper to load sample academic paper for fast MVP test
-  const handleLoadSamplePaper = async () => {
-    const sampleText = `Autonomous distributed consensus protocols fundamentally rely upon bounded message transmission delays to ensure safety and liveness under adversarial network partitions [1]. While classical Byzantine Fault Tolerant (BFT) systems, such as PBFT [2], exhibit $O(N^2)$ message complexity, modern high-throughput state machine replication architectures employ threshold cryptographic signatures to achieve linear $O(N)$ communication complexity. Consequently, transaction finality can be evaluated in under $120\\text{ ms}$ with statistical bounds yielding $p < 0.001$ across $N = 100$ geographically dispersed validator nodes. Furthermore, experimental results obtained from simulated wide-area latency networks demonstrate that cryptographic aggregation reduces bandwidth overhead by $84.2\\%$, thereby mitigating network congestion during adversarial bursts. In contrast to synchronous models, our empirical analysis indicates that partial synchrony preserves safety under arbitrary timing delays, provided the known bound $\\Delta$ holds post Global Stabilization Time (GST).`;
-
-    try {
-      setUploading(true);
-      const res = await fetch("/api/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: "Distributed Consensus Benchmark Paper (Sample)",
-          rawText: sampleText,
-          fileType: "sample",
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedback({ type: "success", text: "Loaded sample academic paper! Voice DNA calibrated." });
-        onDocumentAdded();
-      }
-    } catch (err: any) {
-      setFeedback({ type: "error", text: err.message });
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Upload Zone & Actions */}
@@ -164,28 +137,19 @@ export const TrainingPapers: React.FC<TrainingPapersProps> = ({
         <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 flex flex-col justify-between shadow-md space-y-4">
           <div>
             <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Quick Ingestion</span>
-            <h2 className="mt-1 text-sm font-semibold text-white">Manual Input & Samples</h2>
+            <h2 className="mt-1 text-sm font-semibold text-white">Direct Text Ingestion</h2>
             <p className="mt-1 text-xs text-slate-400">
-              Paste draft notes directly or load a pre-calibrated sample paper.
+              Paste draft notes, lecture summaries, or assignment text directly into your training corpus.
             </p>
           </div>
 
-          <div className="space-y-2">
+          <div>
             <button
               onClick={() => setPasteModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition"
             >
-              <FileCode className="w-4 h-4 text-indigo-400" />
+              <FileCode className="w-4 h-4" />
               <span>Paste Notes / Assignment</span>
-            </button>
-
-            <button
-              onClick={handleLoadSamplePaper}
-              disabled={uploading}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold bg-indigo-950/60 hover:bg-indigo-900/60 border border-indigo-800/60 text-indigo-300 transition"
-            >
-              <Sparkles className="w-4 h-4 text-indigo-400" />
-              <span>Load Sample Academic Paper</span>
             </button>
           </div>
         </div>
@@ -231,7 +195,7 @@ export const TrainingPapers: React.FC<TrainingPapersProps> = ({
         {documents.length === 0 ? (
           <div className="py-12 text-center text-slate-400 border border-dashed border-slate-800 rounded-xl">
             <BookOpen className="w-8 h-8 mx-auto mb-2 text-slate-400 opacity-60" />
-            <p className="text-xs">No documents uploaded yet. Add a PDF, Word doc, or click "Load Sample Academic Paper".</p>
+            <p className="text-xs">No documents uploaded yet. Upload a PDF, Word doc, or paste your academic notes above.</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-800/80">

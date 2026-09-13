@@ -114,37 +114,9 @@ function initSchema(db: Database.Database) {
     updateStmt.run("qwen3:8b", "ollama_model");
   }
 
-  // Initialize default Voice DNA profile if none exists
-  const profileRow = db.prepare("SELECT id FROM voice_profiles WHERE is_active = 1").get();
-  if (!profileRow) {
-    db.prepare(`
-      INSERT INTO voice_profiles (
-        id, name, is_active, tone_descriptors, sentence_cadence,
-        preferred_transitions, rhetorical_habits, synthesized_guidelines, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      "default-profile",
-      "Initial Academic Voice",
-      1,
-      JSON.stringify(["Analytical", "Precision-Oriented", "Measured Hedging", "Objective"]),
-      JSON.stringify({
-        avgSentenceLength: 22.4,
-        variance: "moderate-high",
-        compoundComplexRatio: 0.65,
-      }),
-      JSON.stringify(["consequently", "furthermore", "notably", "in contrast", "fundamentally"]),
-      JSON.stringify([
-        "Frames context before introducing empirical evidence",
-        "Employs disciplined epistemic hedging (e.g., 'suggests', 'indicates') rather than absolute assertions",
-        "Uses active voice for author methodology ('we construct', 'we analyze') and passive voice for experimental conditions",
-      ]),
-      `# Default Academic Voice Guidelines
-- Maintain rigorous scholarly tone with deliberate syntactic rhythm.
-- Vary sentence length: use compact declarative sentences (12-16 words) for core findings, followed by compound-complex explanatory sentences (24-32 words) for theoretical implications.
-- Favor precise transitional signposting (e.g., 'notably', 'consequently', 'conversely').
-- Strictly preserve all mathematical formulations, technical figures, statistical metrics, and bibliographic citations.
-- Never use colloquialisms or generic conversational filler.`,
-      new Date().toISOString()
-    );
-  }
+  // Clean up any legacy demo / sample documents
+  try {
+    db.prepare("DELETE FROM training_documents WHERE file_type = 'sample' OR title LIKE '%(Sample)%'").run();
+  } catch {}
 }
+

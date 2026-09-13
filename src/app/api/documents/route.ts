@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs";
-import { getAllDocuments, addDocument } from "@/lib/db/queries";
-import { computeTextMetrics, synthesizeVoiceProfile } from "@/lib/ai/style-extractor";
+import { getAllDocuments, addDocument, updateVoiceProfile, getActiveVoiceProfile } from "@/lib/db/queries";
+import { computeDocumentMetrics, synthesizeVoiceProfileFromDocs } from "@/lib/styleDNA/extract";
 import { parseDocumentBuffer } from "@/lib/parser";
+import { getDb } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,8 +80,8 @@ export async function POST(req: NextRequest) {
     }
 
     const wordCount = rawText.trim().split(/\s+/).filter(Boolean).length;
-    // Calculate comprehensive 6-dimension metrics
-    const metrics = computeTextMetrics(rawText);
+    // Calculate comprehensive real metrics
+    const metrics = computeDocumentMetrics(rawText);
     const docId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
     const newDoc = {
@@ -98,15 +99,42 @@ export async function POST(req: NextRequest) {
 
     // Build ONE VoiceDNA profile from ALL uploaded documents
     const allDocs = getAllDocuments();
-    const updatedProfile = await synthesizeVoiceProfile(allDocs);
+    const updatedProfile = synthesizeVoiceProfileFromDocs(allDocs);
+
+    if (updatedProfile) {
+      const db = getDb();
+      const existing = db.prepare("SELECT id FROM voice_profiles WHERE is_active = 1 LIMIT 1").get() as any;
+      if (existing) {
+        updateVoiceProfile({ ...updatedProfile, id: existing.id });
+      } else {
+        db.prepare(`
+          INSERT INTO voice_profiles (
+            id, name, is_active, tone_descriptors, sentence_cadence,
+            preferred_transitions, rhetorical_habits, synthesized_guidelines, profile_json, updated_at
+          ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          updatedProfile.id,
+          updatedProfile.name,
+          JSON.stringify(updatedProfile.tone_descriptors),
+          JSON.stringify(updatedProfile.sentence_cadence),
+          JSON.stringify(updatedProfile.preferred_transitions),
+          JSON.stringify(updatedProfile.rhetorical_habits),
+          updatedProfile.synthesized_guidelines,
+          updatedProfile.profile_json,
+          updatedProfile.updated_at
+        );
+      }
+    }
+
+    const totalWords = allDocs.reduce((acc, d) => acc + d.word_count, 0);
 
     return NextResponse.json({
       success: true,
       status: "Voice Learned",
-      message: `Voice Learned from ${allDocs.length} documents (${allDocs.reduce((acc, d) => acc + d.word_count, 0).toLocaleString()} words)`,
+      message: `Voice Learned from ${allDocs.length} documents (${totalWords.toLocaleString()} words)`,
       document: newDoc,
       voiceProfile: updatedProfile,
-      profileJson: updatedProfile.unified_profile || JSON.parse(updatedProfile.profile_json || "{}"),
+      profileJson: updatedProfile?.unified_profile || JSON.parse(updatedProfile?.profile_json || "{}"),
     });
   } catch (err: any) {
     console.error("Document upload error:", err);

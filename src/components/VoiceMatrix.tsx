@@ -4,21 +4,17 @@ import React, { useState } from "react";
 import {
   Dna,
   RefreshCw,
-  Sparkles,
-  BookOpen,
   Quote,
   Cpu,
-  ShieldCheck,
   Check,
   FileCode,
   Copy,
-  ChevronDown,
-  ChevronUp,
-  Hash,
-  Binary,
   Layers,
   Activity,
   Award,
+  Binary,
+  Hash,
+  BookOpen,
 } from "lucide-react";
 import { VoiceProfile } from "@/lib/db/queries";
 
@@ -52,66 +48,82 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
     }
   };
 
-  if (!profile) {
+  const unified = profile?.unified_profile || (profile?.profile_json ? JSON.parse(profile.profile_json) : null);
+  const m = unified?.metrics || unified;
+
+  const totalWords = stats.totalWordsAnalyzed || m?.corpusSummary?.totalWords || 0;
+  const hasLearnedData = Boolean(profile && totalWords > 0);
+
+  if (!hasLearnedData) {
     return (
-      <div className="p-8 text-center text-slate-400">
+      <div className="p-12 text-center text-slate-400 border border-dashed border-slate-800 rounded-2xl bg-slate-900/30">
         <Dna className="w-10 h-10 mx-auto mb-3 text-indigo-400 opacity-50" />
-        <p>No Voice DNA profile detected. Ingest papers in the Training Papers tab.</p>
+        <h3 className="text-sm font-semibold text-slate-300">No Voice DNA Profile Extracted</h3>
+        <p className="mt-1 text-xs text-slate-400 max-w-md mx-auto">
+          Add research drafts, lecture notes, or past papers in the Corpus Manager or Training Papers tab to calculate your mathematical writing habit profile.
+        </p>
       </div>
     );
   }
 
-  // Parse unified profile JSON if available
-  const unified = profile.unified_profile || (profile.profile_json ? JSON.parse(profile.profile_json) : null);
-  const m = unified?.metrics;
-
-  const sentLength = m?.sentenceLength || {
-    averageWords: profile.sentence_cadence?.avgSentenceLength || 22,
-    variance: profile.sentence_cadence?.variance || "moderate",
-    minWords: 6,
-    maxWords: 45,
+  // Real computed metrics
+  const sentLength = {
+    averageWords: m?.sentenceLength?.averageWords ?? 0,
+    medianWords: m?.sentenceLength?.medianWords ?? 0,
+    minWords: m?.sentenceLength?.minWords ?? 0,
+    maxWords: m?.sentenceLength?.maxWords ?? 0,
+    stdDev: m?.sentenceLength?.stdDev ?? 0,
+    distribution: m?.sentenceLength?.distribution ?? { shortPercent: 0, mediumPercent: 0, longPercent: 0 },
   };
 
-  const paraLength = m?.paragraphLength || {
-    averageWords: 110,
-    averageSentences: 5.2,
-    totalParagraphs: stats.documentCount > 0 ? stats.documentCount * 4 : 1,
+  const clauseDensity = {
+    averageClauses: m?.clauseDensity?.averageClausesPerSentence ?? 0,
+    subordinateRatio: m?.clauseDensity?.subordinateClauseRatio ?? 0,
+    coordinationRatio: m?.clauseDensity?.coordinationRatio ?? 0,
   };
 
-  const transitions = m?.transitionWords || {
-    totalCount: 18,
-    densityPer100Words: 2.1,
-    topTransitions: (profile.preferred_transitions || ["consequently", "furthermore"]).map((w) => ({ word: w, count: 3 })),
-    categoryBreakdown: { causal: 6, contrast: 5, additive: 4, emphasis: 3 },
+  const paraLength = {
+    averageWords: m?.paragraphLength?.averageWords ?? 0,
+    averageSentences: m?.paragraphLength?.averageSentences ?? 0,
+    totalParagraphs: m?.paragraphLength?.totalParagraphs ?? stats.documentCount,
   };
 
-  const punct = m?.punctuationHabits || {
-    semicolons: { count: 4, per100Words: 0.3 },
-    colons: { count: 2, per100Words: 0.15 },
-    emDashes: { count: 3, per100Words: 0.2 },
-    parentheses: { count: 12, per100Words: 0.8 },
-    commas: { count: 68, per100Words: 4.6 },
-    summary: "Balanced academic punctuation with parenthetical qualifications and compound semicolons.",
+  const transitions = {
+    densityPer100Words: m?.transitionFrequency?.densityPer100Words ?? (m?.transitionWords?.densityPer100Words ?? 0),
+    topTransitions: m?.transitionFrequency?.topTransitions ?? (m?.transitionWords?.topTransitions ?? []),
+    categoryBreakdown: m?.transitionFrequency?.categoryRatios ?? (m?.transitionWords?.categoryBreakdown ?? {}),
   };
 
-  const techVocab = m?.technicalVocabulary || {
-    acronyms: ["BFT", "PBFT", "API"],
-    topTechnicalTerms: ["consensus", "cryptographic", "synchronous", "throughput"],
-    technicalTermDensity: 7.8,
+  const clarif = {
+    densityPer100Words: m?.clarificationFrequency?.densityPer100Words ?? 0,
+    totalClarifications: m?.clarificationFrequency?.totalClarifications ?? 0,
+    topMarkers: m?.clarificationFrequency?.topMarkers ?? [],
   };
 
-  const passiveVoice = m?.passiveVsActive || {
-    activePercentage: 68,
-    passivePercentage: 32,
-    activeToPassiveRatio: "2.13 : 1",
-    summary: "68% Active / 32% Passive (Favors active voice)",
+  const punct = {
+    semicolons: m?.punctuationHabits?.semicolonsPer100Words ?? 0,
+    colons: m?.punctuationHabits?.colonsPer100Words ?? 0,
+    emDashes: m?.punctuationHabits?.emDashesPer100Words ?? 0,
+    parentheses: m?.punctuationHabits?.parenthesesPer100Words ?? 0,
+    commas: m?.punctuationHabits?.commasPer100Words ?? 0,
   };
 
-  const toneDescriptors = profile.tone_descriptors || ["Analytical", "Precision-Oriented", "Nuanced", "Disciplined Hedging"];
-  const rhetoricalHabits = profile.rhetorical_habits || [];
+  const vocab = {
+    ttr: m?.vocabularyRepetition?.typeTokenRatio ?? 0,
+    redundancy: m?.vocabularyRepetition?.lexicalRedundancy ?? 0,
+    hapax: m?.vocabularyRepetition?.hapaxLegomenaRatio ?? 0,
+  };
+
+  const workflow = {
+    score: m?.workflowExplanationTendency?.tendencyScore ?? 0,
+    proceduralCount: m?.workflowExplanationTendency?.proceduralMarkerCount ?? 0,
+  };
+
+  const toneDescriptors = profile?.tone_descriptors || ["Analytical", "Precision-Oriented", "Objective"];
+  const rhetoricalHabits = profile?.rhetorical_habits || [];
 
   const handleCopyJson = () => {
-    navigator.clipboard.writeText(profile.profile_json || JSON.stringify(unified || profile, null, 2));
+    navigator.clipboard.writeText(profile?.profile_json || JSON.stringify(unified || profile, null, 2));
     setJsonCopied(true);
     setTimeout(() => setJsonCopied(false), 2000);
   };
@@ -123,24 +135,23 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
-              {/* Prominent Voice Learned Status Badge */}
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/10">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>Voice Learned</span>
               </div>
 
               <span className="text-xs text-slate-400 font-mono">
-                Built from {stats.documentCount} document{stats.documentCount === 1 ? "" : "s"} ({stats.totalWordsAnalyzed.toLocaleString()} words)
+                Extracted from {stats.documentCount} source{stats.documentCount === 1 ? "" : "s"} ({totalWords.toLocaleString()} words)
               </span>
 
               <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-                Saved as single VoiceDNA JSON
+                data/profile/voiceDNA.json
               </span>
             </div>
 
-            <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">{profile.name}</h1>
+            <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">{profile?.name || "Academic Voice Profile"}</h1>
             <p className="mt-1 text-xs text-slate-300 max-w-2xl leading-relaxed">
-              Synthesized linguistic DNA across 6 core dimensions: sentence rhythm, paragraph structure, transition frequency, punctuation habits, technical lexicon, and active/passive voice ratio.
+              Mathematical stylometric habit matrix calculated across measurable writing dimensions without copying previous sentences.
             </p>
           </div>
 
@@ -178,37 +189,37 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileCode className="w-4 h-4 text-indigo-400" />
-              <h3 className="text-xs font-semibold text-white font-mono">voicedna_profile.json (Unified Local JSON Profile)</h3>
+              <span className="text-xs font-semibold text-white">data/profile/voiceDNA.json</span>
             </div>
             <button
               onClick={handleCopyJson}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700"
+              className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
             >
-              {jsonCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <Copy className="w-3.5 h-3.5" />
               <span>{jsonCopied ? "Copied!" : "Copy JSON"}</span>
             </button>
           </div>
-          <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 leading-relaxed max-h-80 overflow-y-auto whitespace-pre-wrap">
-            {profile.profile_json || JSON.stringify(unified || profile, null, 2)}
+          <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 max-h-72 overflow-y-auto leading-relaxed">
+            {profile?.profile_json || JSON.stringify(m, null, 2)}
           </pre>
         </div>
       )}
 
-      {/* 6 Required Metrics Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {/* 1. Average Sentence Length */}
+      {/* Core Measurable Stylometrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Sentence Cadence */}
         <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
               1. Sentence Cadence
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-900/40">
-              {sentLength.variance}
+              ±{sentLength.stdDev} dev
             </span>
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-indigo-300">
+            <span className="text-3xl font-extrabold font-mono text-white">
               {sentLength.averageWords}
             </span>
             <span className="text-xs text-slate-400">words / sentence</span>
@@ -216,238 +227,115 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
 
           <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
             <div className="flex justify-between">
-              <span>Short (&lt;15 words):</span>
-              <span className="font-mono text-slate-300">{sentLength.distribution?.shortCount ?? 0}</span>
+              <span>Median Words:</span>
+              <span className="font-mono text-slate-300">{sentLength.medianWords} words</span>
             </div>
             <div className="flex justify-between">
-              <span>Medium (15-25 words):</span>
-              <span className="font-mono text-slate-300">{sentLength.distribution?.mediumCount ?? 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Long (&gt;25 words):</span>
-              <span className="font-mono text-slate-300">{sentLength.distribution?.longCount ?? 0}</span>
+              <span>Short / Med / Long:</span>
+              <span className="font-mono text-slate-300">
+                {sentLength.distribution.shortPercent}% / {sentLength.distribution.mediumPercent}% / {sentLength.distribution.longPercent}%
+              </span>
             </div>
           </div>
         </div>
 
-        {/* 2. Paragraph Length */}
+        {/* 2. Clause Density */}
         <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-              2. Paragraph Length
+              2. Clause Density
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-900/40">
-              {paraLength.totalParagraphs} Paragraphs
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950/60 text-purple-300 border border-purple-900/40">
+              Syntactic Nesting
             </span>
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold font-mono text-indigo-300">
-              {paraLength.averageWords}
+            <span className="text-3xl font-extrabold font-mono text-purple-300">
+              {clauseDensity.averageClauses}
             </span>
-            <span className="text-xs text-slate-400">words / paragraph</span>
+            <span className="text-xs text-slate-400">clauses / sentence</span>
           </div>
 
           <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
             <div className="flex justify-between">
-              <span>Average Sentences:</span>
-              <span className="font-mono text-slate-300">{paraLength.averageSentences} sents / para</span>
+              <span>Subordination:</span>
+              <span className="font-mono text-slate-300">{clauseDensity.subordinateRatio}</span>
             </div>
             <div className="flex justify-between">
-              <span>Shortest Paragraph:</span>
-              <span className="font-mono text-slate-300">{paraLength.minWords} words</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Longest Paragraph:</span>
-              <span className="font-mono text-slate-300">{paraLength.maxWords} words</span>
+              <span>Coordination:</span>
+              <span className="font-mono text-slate-300">{clauseDensity.coordinationRatio}</span>
             </div>
           </div>
         </div>
 
-        {/* 3. Transition Words */}
+        {/* 3. Transition Density */}
         <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-              3. Transition Words
+              3. Transitions
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-900/40">
-              {transitions.densityPer100Words} / 100 words
+              {transitions.densityPer100Words} / 100w
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-1.5 min-h-[40px] items-center">
-            {transitions.topTransitions?.slice(0, 6).map((t: any, i: number) => (
+          <div className="flex flex-wrap gap-1 min-h-[36px] items-center">
+            {transitions.topTransitions?.slice(0, 4).map((t: any, i: number) => (
               <span
                 key={i}
-                className="px-2 py-0.5 rounded text-[11px] font-mono bg-indigo-950/60 text-indigo-300 border border-indigo-900/50"
+                className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-950/60 text-indigo-300 border border-indigo-900/50"
               >
                 {t.word} ({t.count})
               </span>
             ))}
           </div>
 
-          <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex flex-wrap gap-2">
-            <span>Causal: {transitions.categoryBreakdown?.causal ?? 0}</span>
-            <span>•</span>
-            <span>Contrast: {transitions.categoryBreakdown?.contrast ?? 0}</span>
-            <span>•</span>
-            <span>Additive: {transitions.categoryBreakdown?.additive ?? 0}</span>
+          <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex justify-between">
+            <span>Causal: {transitions.categoryBreakdown?.causal ?? 0}%</span>
+            <span>Contrast: {transitions.categoryBreakdown?.adversative ?? 0}%</span>
           </div>
         </div>
 
-        {/* 4. Punctuation Habits */}
+        {/* 4. Workflow Score */}
         <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-              4. Punctuation Habits
+              4. Workflow Score
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-900/40">
-              Syntactic Markers
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Semicolons</span>
-              <span className="font-mono font-bold text-slate-200">{punct.semicolons?.count ?? 0}</span>
-            </div>
-            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Parentheses</span>
-              <span className="font-mono font-bold text-slate-200">{punct.parentheses?.count ?? 0}</span>
-            </div>
-            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800">
-              <span className="text-slate-400 block text-[10px]">Em-dashes</span>
-              <span className="font-mono font-bold text-slate-200">{punct.emDashes?.count ?? 0}</span>
-            </div>
-          </div>
-
-          <p className="pt-1 text-[11px] text-slate-400 leading-snug line-clamp-2">
-            {punct.summary}
-          </p>
-        </div>
-
-        {/* 5. Technical Vocabulary */}
-        <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-              5. Technical Vocabulary
-            </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-900/40">
-              {techVocab.technicalTermDensity ?? 0}% Density
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-900/40">
+              {workflow.proceduralCount} markers
             </span>
           </div>
 
-          {techVocab.acronyms?.length > 0 && (
-            <div>
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block mb-1">
-                Acronyms:
-              </span>
-              <div className="flex flex-wrap gap-1">
-                {techVocab.acronyms.slice(0, 6).map((acr: string, i: number) => (
-                  <span key={i} className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-800 text-indigo-300 border border-slate-700">
-                    {acr}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="pt-2 border-t border-slate-800/80">
-            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block mb-1">
-              Top Domain Terms:
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold font-mono text-amber-300">
+              {workflow.score}
             </span>
-            <div className="flex flex-wrap gap-1">
-              {techVocab.topTechnicalTerms?.slice(0, 5).map((term: string, i: number) => (
-                <span key={i} className="text-[11px] text-slate-300 font-mono bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
-                  {term}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 6. Passive vs Active Ratio */}
-        <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-              6. Passive vs Active Voice
-            </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-900/40">
-              {passiveVoice.activeToPassiveRatio} Ratio
-            </span>
+            <span className="text-xs text-slate-400">/ 100 procedural</span>
           </div>
 
-          {/* Progress bar visual */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs font-semibold">
-              <span className="text-emerald-400">{passiveVoice.activePercentage}% Active</span>
-              <span className="text-indigo-400">{passiveVoice.passivePercentage}% Passive</span>
-            </div>
-            <div className="w-full h-2.5 rounded-full bg-slate-950 overflow-hidden flex border border-slate-800">
-              <div
-                style={{ width: `${passiveVoice.activePercentage}%` }}
-                className="bg-emerald-500 h-full"
-                title={`Active sentences: ${passiveVoice.activePercentage}%`}
-              ></div>
-              <div
-                style={{ width: `${passiveVoice.passivePercentage}%` }}
-                className="bg-indigo-500 h-full"
-                title={`Passive sentences: ${passiveVoice.passivePercentage}%`}
-              ></div>
+          <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
+            <div className="flex justify-between">
+              <span>Lexical TTR:</span>
+              <span className="font-mono text-slate-300">{vocab.ttr}</span>
             </div>
           </div>
-
-          <p className="pt-1 text-[11px] text-slate-400 leading-snug">
-            {passiveVoice.summary}
-          </p>
         </div>
       </div>
 
-      {/* Rhetorical Habits & Voice Guidelines Blueprint */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Tone & Rhetorical Patterns */}
-        <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-4">
-          <div>
-            <div className="flex items-center gap-2 text-slate-200">
-              <Quote className="w-4 h-4 text-indigo-400" />
-              <h2 className="text-sm font-semibold">Scholarly Tone & Persona</h2>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {toneDescriptors.map((tone, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-800 text-slate-200 border border-slate-700/60"
-                >
-                  {tone}
-                </span>
-              ))}
-            </div>
+      {/* Guidelines & Fingerprint Rules */}
+      <div className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-slate-200">
+            <Cpu className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-sm font-semibold">Active Calibrated Voice Guidelines</h2>
           </div>
-
-          <div className="pt-3 border-t border-slate-800 space-y-2.5">
-            <span className="text-xs font-semibold text-slate-300 block">Rhetorical Habits:</span>
-            {rhetoricalHabits.map((habit, idx) => (
-              <div key={idx} className="flex items-start gap-2 text-xs text-slate-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0"></span>
-                <span>{habit}</span>
-              </div>
-            ))}
-          </div>
+          <span className="text-[11px] text-slate-400 font-mono">Injected into Ollama</span>
         </div>
 
-        {/* Right: Full LLM Voice Directive Blueprint */}
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-md space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-slate-200">
-              <Cpu className="w-4 h-4 text-emerald-400" />
-              <h2 className="text-sm font-semibold">Unified VoiceDNA Blueprint (LLM System Directive)</h2>
-            </div>
-            <span className="text-[11px] text-slate-400 font-mono">Single JSON Profile Active</span>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-slate-300 leading-relaxed overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto">
-            {profile.synthesized_guidelines}
-          </div>
+        <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-slate-300 leading-relaxed overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto">
+          {profile?.synthesized_guidelines || "No guidelines synthesized yet."}
         </div>
       </div>
     </div>

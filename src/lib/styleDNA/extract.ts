@@ -374,42 +374,195 @@ export function extractAndSaveProfileFromProcessed(): StyleDNAMetrics {
   return metrics;
 }
 
-function getEmptyMetrics(): StyleDNAMetrics {
+export function getEmptyMetrics(): StyleDNAMetrics {
   return {
     corpusSummary: { totalFiles: 0, totalWords: 0, totalSentences: 0, totalParagraphs: 0 },
     sentenceLength: {
-      averageWords: 22,
-      medianWords: 20,
-      minWords: 5,
-      maxWords: 40,
-      stdDev: 6,
-      distribution: { shortPercent: 20, mediumPercent: 60, longPercent: 20 },
+      averageWords: 0,
+      medianWords: 0,
+      minWords: 0,
+      maxWords: 0,
+      stdDev: 0,
+      distribution: { shortPercent: 0, mediumPercent: 0, longPercent: 0 },
     },
-    clauseDensity: { averageClausesPerSentence: 1.8, subordinateClauseRatio: 0.6, coordinationRatio: 0.2 },
-    paragraphLength: { averageSentences: 4, averageWords: 90, totalParagraphs: 0 },
+    clauseDensity: { averageClausesPerSentence: 0, subordinateClauseRatio: 0, coordinationRatio: 0 },
+    paragraphLength: { averageSentences: 0, averageWords: 0, totalParagraphs: 0 },
     transitionFrequency: {
-      densityPer100Words: 2.0,
-      categoryRatios: { causal: 25, adversative: 25, additive: 25, sequential: 15, emphasis: 10 },
+      densityPer100Words: 0,
+      categoryRatios: { causal: 0, adversative: 0, additive: 0, sequential: 0, emphasis: 0 },
       topTransitions: [],
     },
     clarificationFrequency: {
-      densityPer100Words: 0.3,
-      occurrencesPer10Sentences: 0.5,
+      densityPer100Words: 0,
+      occurrencesPer10Sentences: 0,
       totalClarifications: 0,
       topMarkers: [],
     },
     punctuationHabits: {
-      semicolonsPer100Words: 0.2,
-      colonsPer100Words: 0.1,
-      emDashesPer100Words: 0.15,
-      parenthesesPer100Words: 0.4,
-      commasPer100Words: 4.5,
-      quotesPer100Words: 0.2,
-      questionsPer100Sentences: 0.1,
+      semicolonsPer100Words: 0,
+      colonsPer100Words: 0,
+      emDashesPer100Words: 0,
+      parenthesesPer100Words: 0,
+      commasPer100Words: 0,
+      quotesPer100Words: 0,
+      questionsPer100Sentences: 0,
     },
-    vocabularyRepetition: { typeTokenRatio: 0.45, lexicalRedundancy: 0.55, hapaxLegomenaRatio: 0.5 },
-    workflowExplanationTendency: { densityPer100Words: 1.5, proceduralMarkerCount: 0, tendencyScore: 40 },
+    vocabularyRepetition: { typeTokenRatio: 0, lexicalRedundancy: 0, hapaxLegomenaRatio: 0 },
+    workflowExplanationTendency: { densityPer100Words: 0, proceduralMarkerCount: 0, tendencyScore: 0 },
     timestamp: new Date().toISOString(),
+  };
+}
+
+export interface DocumentMetrics {
+  avgSentenceLength: number;
+  sentenceVariance?: string;
+  lexicalDiversity: number;
+  passiveRatio: number;
+  transitionDensity: number;
+  detectedCitationStyle: string;
+  topTransitions?: string[];
+  sampleCount: number;
+  paragraphLength?: {
+    averageWords: number;
+    averageSentences: number;
+    totalParagraphs: number;
+  };
+  punctuationHabits?: {
+    semicolons: { count: number; per100Words: number };
+    colons: { count: number; per100Words: number };
+    emDashes: { count: number; per100Words: number };
+    parentheses: { count: number; per100Words: number };
+    commas: { count: number; per100Words: number };
+  };
+  passiveVsActive?: {
+    activePercentage: number;
+    passivePercentage: number;
+    activeToPassiveRatio: string;
+    summary: string;
+  };
+}
+
+/**
+ * Computes individual document metrics using the real StyleDNA extraction algorithms.
+ */
+export function computeDocumentMetrics(text: string): DocumentMetrics {
+  const styleMetrics = extractStyleDNAFromTexts([text]);
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const totalWords = Math.max(1, words.length);
+
+  const passiveMatches = text.match(/\b(?:is|are|was|were|be|been|being)\s+[a-z]+(?:ed|en)\b/gi) || [];
+  const passiveCount = passiveMatches.length;
+  const sentencesCount = Math.max(1, styleMetrics.corpusSummary.totalSentences);
+  const passivePerSentence = passiveCount / sentencesCount;
+  const passiveRatio = Math.min(1, Math.round(passivePerSentence * 100) / 100);
+
+  const passivePct = Math.round(Math.min(100, (passiveCount / Math.max(1, sentencesCount)) * 100));
+  const activePct = 100 - passivePct;
+
+  const bracketMatches = text.match(/\[\d+(?:,\s*\d+)*\]/g) || [];
+  const authorDateMatches = text.match(/\([A-Z][a-zA-Z\s]+,\s*(?:19|20)\d{2}\)/g) || [];
+  let detectedCitationStyle = "None detected";
+  if (bracketMatches.length >= authorDateMatches.length && bracketMatches.length > 0) {
+    detectedCitationStyle = `IEEE / ACM Numeric Brackets [1] (${bracketMatches.length} detected)`;
+  } else if (authorDateMatches.length > 0) {
+    detectedCitationStyle = `APA / Harvard Author-Date (Smith, 2024) (${authorDateMatches.length} detected)`;
+  }
+
+  return {
+    avgSentenceLength: styleMetrics.sentenceLength.averageWords,
+    sentenceVariance: styleMetrics.sentenceLength.stdDev > 7 ? "high" : "moderate",
+    lexicalDiversity: styleMetrics.vocabularyRepetition.typeTokenRatio,
+    passiveRatio,
+    transitionDensity: styleMetrics.transitionFrequency.densityPer100Words,
+    detectedCitationStyle,
+    topTransitions: styleMetrics.transitionFrequency.topTransitions.map((t) => t.word),
+    sampleCount: styleMetrics.corpusSummary.totalSentences,
+    paragraphLength: styleMetrics.paragraphLength,
+    punctuationHabits: {
+      semicolons: {
+        count: Math.round((styleMetrics.punctuationHabits.semicolonsPer100Words * totalWords) / 100),
+        per100Words: styleMetrics.punctuationHabits.semicolonsPer100Words,
+      },
+      colons: {
+        count: Math.round((styleMetrics.punctuationHabits.colonsPer100Words * totalWords) / 100),
+        per100Words: styleMetrics.punctuationHabits.colonsPer100Words,
+      },
+      emDashes: {
+        count: Math.round((styleMetrics.punctuationHabits.emDashesPer100Words * totalWords) / 100),
+        per100Words: styleMetrics.punctuationHabits.emDashesPer100Words,
+      },
+      parentheses: {
+        count: Math.round((styleMetrics.punctuationHabits.parenthesesPer100Words * totalWords) / 100),
+        per100Words: styleMetrics.punctuationHabits.parenthesesPer100Words,
+      },
+      commas: {
+        count: Math.round((styleMetrics.punctuationHabits.commasPer100Words * totalWords) / 100),
+        per100Words: styleMetrics.punctuationHabits.commasPer100Words,
+      },
+    },
+    passiveVsActive: {
+      activePercentage: activePct,
+      passivePercentage: passivePct,
+      activeToPassiveRatio: `${(activePct / Math.max(1, passivePct)).toFixed(1)} : 1`,
+      summary: `${activePct}% Active / ${passivePct}% Passive`,
+    },
+  };
+}
+
+/**
+ * Builds a VoiceProfile from an array of TrainingDocuments without any mock or baseline texts.
+ */
+export function synthesizeVoiceProfileFromDocs(documents: any[]): any {
+  if (!documents || documents.length === 0) {
+    return null;
+  }
+
+  const texts = documents.map((d) => d.raw_text).filter(Boolean);
+  if (texts.length === 0) {
+    return null;
+  }
+
+  const metrics = extractStyleDNAFromTexts(texts);
+  const totalWords = metrics.corpusSummary.totalWords;
+  const topTrans = metrics.transitionFrequency.topTransitions.map((t) => t.word);
+
+  const profileDir = path.join(process.cwd(), "data", "profile");
+  if (!fs.existsSync(profileDir)) fs.mkdirSync(profileDir, { recursive: true });
+  fs.writeFileSync(path.join(profileDir, "voiceDNA.json"), JSON.stringify(metrics, null, 2), "utf-8");
+
+  const synthesizedGuidelines = `# Calibrated Academic Voice Guidelines
+- Maintain scholarly tone with deliberate syntactic rhythm (averaging ~${Math.round(metrics.sentenceLength.averageWords)} words/sentence).
+- Transition density: ${metrics.transitionFrequency.densityPer100Words} per 100 words (favors: ${topTrans.slice(0, 5).join(", ") || "standard connectors"}).
+- Strictly preserve all mathematical formulations, technical figures, statistical metrics, and bibliographic citations.
+- Never use colloquialisms or generic conversational filler.`;
+
+  return {
+    id: "default-profile",
+    name: "Learned Academic Voice Profile",
+    is_active: 1,
+    tone_descriptors: ["Analytical", "Precision-Oriented", "Objective"],
+    sentence_cadence: metrics.sentenceLength,
+    preferred_transitions: topTrans,
+    rhetorical_habits: [
+      "Frames theoretical context before empirical evidence",
+      "Employs disciplined epistemic hedging",
+      "Maintains scholarly syntactic cadence",
+    ],
+    synthesized_guidelines: synthesizedGuidelines,
+    profile_json: JSON.stringify(metrics, null, 2),
+    unified_profile: {
+      version: "2.0",
+      status: "Voice Learned",
+      updatedAt: new Date().toISOString(),
+      corpusSummary: {
+        totalDocuments: documents.length,
+        totalWords,
+        totalSentences: metrics.corpusSummary.totalSentences,
+        totalParagraphs: metrics.paragraphLength.totalParagraphs,
+      },
+      metrics,
+    },
+    updated_at: new Date().toISOString(),
   };
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteDocument, getAllDocuments } from "@/lib/db/queries";
-import { synthesizeVoiceProfile } from "@/lib/ai/style-extractor";
+import { deleteDocument, getAllDocuments, updateVoiceProfile } from "@/lib/db/queries";
+import { synthesizeVoiceProfileFromDocs } from "@/lib/styleDNA/extract";
+import { getDb } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,15 @@ export async function DELETE(
 
     // Recalibrate voice profile with remaining documents
     const remainingDocs = getAllDocuments();
-    const updatedProfile = await synthesizeVoiceProfile(remainingDocs);
+    const updatedProfile = synthesizeVoiceProfileFromDocs(remainingDocs);
+
+    if (updatedProfile) {
+      const db = getDb();
+      const existing = db.prepare("SELECT id FROM voice_profiles WHERE is_active = 1 LIMIT 1").get() as any;
+      if (existing) {
+        updateVoiceProfile({ ...updatedProfile, id: existing.id });
+      }
+    }
 
     return NextResponse.json({
       success: true,

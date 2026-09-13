@@ -66,57 +66,65 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
     );
   }
 
+  // Helper to format values with Insufficient data fallback
+  const fmt = (v: number | null | undefined, suffix = ""): React.ReactNode => {
+    if (v === null || v === undefined) {
+      return <span className="text-slate-500 font-sans text-xs font-normal">Insufficient data</span>;
+    }
+    return `${v}${suffix}`;
+  };
+
   // Real computed metrics
   const sentLength = {
-    averageWords: m?.sentenceLength?.averageWords ?? 0,
-    medianWords: m?.sentenceLength?.medianWords ?? 0,
-    minWords: m?.sentenceLength?.minWords ?? 0,
-    maxWords: m?.sentenceLength?.maxWords ?? 0,
-    stdDev: m?.sentenceLength?.stdDev ?? 0,
-    distribution: m?.sentenceLength?.distribution ?? { shortPercent: 0, mediumPercent: 0, longPercent: 0 },
+    averageWords: m?.sentenceLength?.averageWords ?? null,
+    medianWords: m?.sentenceLength?.medianWords ?? null,
+    minWords: m?.sentenceLength?.minWords ?? null,
+    maxWords: m?.sentenceLength?.maxWords ?? null,
+    stdDev: m?.sentenceLength?.stdDev ?? null,
+    distribution: m?.sentenceLength?.distribution ?? null,
   };
 
   const clauseDensity = {
-    averageClauses: m?.clauseDensity?.averageClausesPerSentence ?? 0,
-    subordinateRatio: m?.clauseDensity?.subordinateClauseRatio ?? 0,
-    coordinationRatio: m?.clauseDensity?.coordinationRatio ?? 0,
+    averageClauses: m?.clauseDensity?.averageClausesPerSentence ?? null,
+    subordinateRatio: m?.clauseDensity?.subordinateClauseRatio ?? null,
+    coordinationRatio: m?.clauseDensity?.coordinationRatio ?? null,
   };
 
   const paraLength = {
-    averageWords: m?.paragraphLength?.averageWords ?? 0,
-    averageSentences: m?.paragraphLength?.averageSentences ?? 0,
+    averageWords: m?.paragraphLength?.averageWords ?? null,
+    averageSentences: m?.paragraphLength?.averageSentences ?? null,
     totalParagraphs: m?.paragraphLength?.totalParagraphs ?? stats.documentCount,
   };
 
   const transitions = {
-    densityPer100Words: m?.transitionFrequency?.densityPer100Words ?? (m?.transitionWords?.densityPer100Words ?? 0),
-    topTransitions: m?.transitionFrequency?.topTransitions ?? (m?.transitionWords?.topTransitions ?? []),
-    categoryBreakdown: m?.transitionFrequency?.categoryRatios ?? (m?.transitionWords?.categoryBreakdown ?? {}),
+    densityPer100Words: m?.transitionFrequency?.densityPer100Words ?? null,
+    topTransitions: m?.transitionFrequency?.topTransitions ?? [],
+    categoryBreakdown: m?.transitionFrequency?.categoryRatios ?? {},
   };
 
   const clarif = {
-    densityPer100Words: m?.clarificationFrequency?.densityPer100Words ?? 0,
+    densityPer100Words: m?.clarificationFrequency?.densityPer100Words ?? null,
     totalClarifications: m?.clarificationFrequency?.totalClarifications ?? 0,
     topMarkers: m?.clarificationFrequency?.topMarkers ?? [],
   };
 
   const punct = {
-    semicolons: m?.punctuationHabits?.semicolonsPer100Words ?? 0,
-    colons: m?.punctuationHabits?.colonsPer100Words ?? 0,
-    emDashes: m?.punctuationHabits?.emDashesPer100Words ?? 0,
-    parentheses: m?.punctuationHabits?.parenthesesPer100Words ?? 0,
-    commas: m?.punctuationHabits?.commasPer100Words ?? 0,
+    semicolons: m?.punctuationHabits?.semicolonsPer100Words ?? null,
+    colons: m?.punctuationHabits?.colonsPer100Words ?? null,
+    emDashes: m?.punctuationHabits?.emDashesPer100Words ?? null,
+    parentheses: m?.punctuationHabits?.parenthesesPer100Words ?? null,
+    commas: m?.punctuationHabits?.commasPer100Words ?? null,
   };
 
   const vocab = {
-    ttr: m?.vocabularyRepetition?.typeTokenRatio ?? 0,
-    redundancy: m?.vocabularyRepetition?.lexicalRedundancy ?? 0,
-    hapax: m?.vocabularyRepetition?.hapaxLegomenaRatio ?? 0,
+    ttr: m?.vocabularyRepetition?.typeTokenRatio ?? null,
+    redundancy: m?.vocabularyRepetition?.lexicalRedundancy ?? null,
+    hapax: m?.vocabularyRepetition?.hapaxLegomenaRatio ?? null,
   };
 
   const workflow = {
-    score: m?.workflowExplanationTendency?.tendencyScore ?? 0,
-    proceduralCount: m?.workflowExplanationTendency?.proceduralMarkerCount ?? 0,
+    score: m?.workflowExplanationTendency?.tendencyScore ?? null,
+    proceduralCount: m?.workflowExplanationTendency?.proceduralMarkerCount ?? null,
   };
 
   const toneDescriptors = profile?.tone_descriptors || ["Analytical", "Precision-Oriented", "Objective"];
@@ -214,26 +222,28 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
               1. Sentence Cadence
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950/60 text-indigo-300 border border-indigo-900/40">
-              ±{sentLength.stdDev} dev
+              {sentLength.stdDev !== null ? `±${sentLength.stdDev} dev` : "Insufficient data"}
             </span>
           </div>
 
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold font-mono text-white">
-              {sentLength.averageWords}
+              {fmt(sentLength.averageWords)}
             </span>
-            <span className="text-xs text-slate-400">words / sentence</span>
+            {sentLength.averageWords !== null && <span className="text-xs text-slate-400">words / sentence</span>}
           </div>
 
           <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
             <div className="flex justify-between">
               <span>Median Words:</span>
-              <span className="font-mono text-slate-300">{sentLength.medianWords} words</span>
+              <span className="font-mono text-slate-300">{fmt(sentLength.medianWords, " words")}</span>
             </div>
             <div className="flex justify-between">
               <span>Short / Med / Long:</span>
               <span className="font-mono text-slate-300">
-                {sentLength.distribution.shortPercent}% / {sentLength.distribution.mediumPercent}% / {sentLength.distribution.longPercent}%
+                {sentLength.distribution
+                  ? `${sentLength.distribution.shortPercent}% / ${sentLength.distribution.mediumPercent}% / ${sentLength.distribution.longPercent}%`
+                  : "Insufficient data"}
               </span>
             </div>
           </div>
@@ -252,19 +262,19 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
 
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold font-mono text-purple-300">
-              {clauseDensity.averageClauses}
+              {fmt(clauseDensity.averageClauses)}
             </span>
-            <span className="text-xs text-slate-400">clauses / sentence</span>
+            {clauseDensity.averageClauses !== null && <span className="text-xs text-slate-400">clauses / sentence</span>}
           </div>
 
           <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
             <div className="flex justify-between">
               <span>Subordination:</span>
-              <span className="font-mono text-slate-300">{clauseDensity.subordinateRatio}</span>
+              <span className="font-mono text-slate-300">{fmt(clauseDensity.subordinateRatio)}</span>
             </div>
             <div className="flex justify-between">
               <span>Coordination:</span>
-              <span className="font-mono text-slate-300">{clauseDensity.coordinationRatio}</span>
+              <span className="font-mono text-slate-300">{fmt(clauseDensity.coordinationRatio)}</span>
             </div>
           </div>
         </div>
@@ -276,7 +286,7 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
               3. Transitions
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-900/40">
-              {transitions.densityPer100Words} / 100w
+              {fmt(transitions.densityPer100Words, " / 100w")}
             </span>
           </div>
 
@@ -289,6 +299,9 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
                 {t.word} ({t.count})
               </span>
             ))}
+            {(!transitions.topTransitions || transitions.topTransitions.length === 0) && (
+              <span className="text-slate-500 text-[10px] italic">Insufficient data</span>
+            )}
           </div>
 
           <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex justify-between">
@@ -304,21 +317,21 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
               4. Workflow Score
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-900/40">
-              {workflow.proceduralCount} markers
+              {workflow.proceduralCount !== null ? `${workflow.proceduralCount} markers` : "Insufficient data"}
             </span>
           </div>
 
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold font-mono text-amber-300">
-              {workflow.score}
+              {fmt(workflow.score)}
             </span>
-            <span className="text-xs text-slate-400">/ 100 procedural</span>
+            {workflow.score !== null && <span className="text-xs text-slate-400">/ 100 procedural</span>}
           </div>
 
           <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-1">
             <div className="flex justify-between">
               <span>Lexical TTR:</span>
-              <span className="font-mono text-slate-300">{vocab.ttr}</span>
+              <span className="font-mono text-slate-300">{fmt(vocab.ttr)}</span>
             </div>
           </div>
         </div>

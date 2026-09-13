@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { parseDocumentBuffer } from "../parser";
-import { extractAndSaveProfileFromProcessed, StyleDNAMetrics } from "./extract";
+import { extractAndSaveProfileFromProcessed, StyleDNAMetrics, analyzeTextStructure } from "./extract";
 import { getFingerprintRules } from "./fingerprint";
 
 export interface CorpusFileInfo {
@@ -83,17 +83,15 @@ export async function scanAndSyncCorpus(): Promise<CorpusSummary> {
       textContent = fs.readFileSync(processedFilePath, "utf-8");
     }
 
-    const words = textContent.trim() ? textContent.trim().split(/\s+/).filter(Boolean).length : 0;
-    const sentenceDelim = /(?<=[.?!])\s+(?=[A-Z0-9])/g;
-    const sentences = textContent.trim()
-      ? textContent.split(sentenceDelim).map((s) => s.trim()).filter((s) => s.length > 5).length
-      : 0;
+    const structure = analyzeTextStructure(textContent);
+    const words = structure.words;
+    const sentences = structure.sentences.length;
 
     fileInfos.push({
       fileName,
       fileType: parsed.ext.replace(".", "").toUpperCase(),
       words,
-      sentences: Math.max(sentences, words > 0 ? 1 : 0),
+      sentences,
       lastModified: stat.mtime.toISOString(),
       sizeBytes: stat.size,
       processedFileName,

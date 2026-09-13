@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { generateFingerprint, saveFingerprint, loadFingerprint } from "./fingerprint";
 
 export interface StyleDNAMetrics {
   corpusSummary: {
@@ -610,13 +611,46 @@ export function validateStyleDNAMetrics(metrics: StyleDNAMetrics): { valid: bool
         errors.push(`Invalid typeTokenRatio: ${ttr} (must be 0 <= TTR <= 1)`);
       }
     }
+
+    // Percentage bounds checks (0 to 100)
+    if (metrics.sentenceLength.distribution) {
+      const d = metrics.sentenceLength.distribution;
+      if (d.shortPercent < 0 || d.shortPercent > 100) errors.push(`shortPercent out of bounds [0, 100]: ${d.shortPercent}`);
+      if (d.mediumPercent < 0 || d.mediumPercent > 100) errors.push(`mediumPercent out of bounds [0, 100]: ${d.mediumPercent}`);
+      if (d.longPercent < 0 || d.longPercent > 100) errors.push(`longPercent out of bounds [0, 100]: ${d.longPercent}`);
+    }
+    const cats = metrics.transitionFrequency.categoryRatios;
+    for (const [catName, catVal] of Object.entries(cats)) {
+      if (catVal < 0 || catVal > 100) errors.push(`Transition category ${catName} out of bounds [0, 100]: ${catVal}`);
+    }
+    if (metrics.workflowExplanationTendency.tendencyScore !== null) {
+      const s = metrics.workflowExplanationTendency.tendencyScore;
+      if (s < 0 || s > 100) errors.push(`workflow tendencyScore out of bounds [0, 100]: ${s}`);
+    }
   }
+
+  // Strict check: No NaN or Infinity anywhere in the metrics object
+  function checkFinite(val: any, label: string): void {
+    if (val === null || val === undefined) return;
+    if (typeof val === "number") {
+      if (Number.isNaN(val)) errors.push(`NaN detected at ${label}`);
+      if (!Number.isFinite(val)) errors.push(`Infinity detected at ${label}`);
+    } else if (typeof val === "object") {
+      for (const [k, v] of Object.entries(val)) {
+        checkFinite(v, `${label}.${k}`);
+      }
+    }
+  }
+  checkFinite(metrics, "metrics");
 
   return { valid: errors.length === 0, errors };
 }
 
 /**
- * Reads every processed corpus file from data/processed/ and compiles data/profile/voiceDNA.json
+ * Reads every processed corpus file from data/processed/ and compiles:
+ * 1. data/profile/metrics.json (strictly numerical)
+ * 2. data/profile/fingerprint.json (qualitative rules & categories)
+ * 3. data/profile/voiceDNA.json (merged runtime profile)
  */
 export function extractAndSaveProfileFromProcessed(): StyleDNAMetrics {
   const processedDir = path.join(process.cwd(), "data", "processed");
@@ -651,9 +685,51 @@ export function extractAndSaveProfileFromProcessed(): StyleDNAMetrics {
     throw new Error(`StyleDNA mathematical validation failed: ${validation.errors.join("; ")}`);
   }
 
-  // Save validated metrics to data/profile/voiceDNA.json
+  // 1. Save data/profile/metrics.json
+  const metricsPath = path.join(profileDir, "metrics.json");
+  fs.writeFileSync(metricsPath, JSON.stringify(metrics, null, 2), "utf-8");
+
+  // 2. Generate and save data/profile/fingerprint.json
+  const existingFingerprint = loadFingerprint();
+  const fingerprint = generateFingerprint(metrics, existingFingerprint);
+  saveFingerprint(fingerprint);
+
+  // 3. Save merged runtime profile to data/profile/voiceDNA.json
   const profilePath = path.join(profileDir, "voiceDNA.json");
-  fs.writeFileSync(profilePath, JSON.stringify(metrics, null, 2), "utf-8");
+  const topTrans = metrics.transitionFrequency.topTransitions.map((t) => t.word);
+  const avgLenDisplay = metrics.sentenceLength.averageWords !== null ? `~${Math.round(metrics.sentenceLength.averageWords)}` : "moderate";
+  const transDensityDisplay = metrics.transitionFrequency.densityPer100Words !== null ? `${metrics.transitionFrequency.densityPer100Words}` : "standard";
+
+  const synthesizedGuidelines = `# Calibrated Academic Voice Guidelines
+${fingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
+
+## Measurable Quantitative Habits:
+- Average Sentence Length: ${metrics.sentenceLength.averageWords ?? "—"} words
+- Clause Density: ${metrics.clauseDensity.averageClausesPerSentence ?? "—"} clauses/sentence
+- Clarification Frequency: ${metrics.clarificationFrequency.densityPer100Words ?? "—"} markers / 100 words
+- Transition Density: ${metrics.transitionFrequency.densityPer100Words ?? "—"} per 100 words
+- Lexical Type-Token Ratio: ${metrics.vocabularyRepetition.typeTokenRatio ?? "—"}
+- Workflow Explanation Score: ${metrics.workflowExplanationTendency.tendencyScore ?? "—"}/100`;
+
+  const mergedProfile = {
+    version: "1.0",
+    corpusSummary: metrics.corpusSummary,
+    metrics,
+    fingerprint,
+    sentenceLength: metrics.sentenceLength,
+    clauseDensity: metrics.clauseDensity,
+    paragraphLength: metrics.paragraphLength,
+    transitionFrequency: metrics.transitionFrequency,
+    clarificationFrequency: metrics.clarificationFrequency,
+    punctuationHabits: metrics.punctuationHabits,
+    vocabularyRepetition: metrics.vocabularyRepetition,
+    workflowExplanationTendency: metrics.workflowExplanationTendency,
+    qualitative_rules: fingerprint.qualitative_rules,
+    synthesized_guidelines: synthesizedGuidelines,
+    updated_at: new Date().toISOString(),
+  };
+
+  fs.writeFileSync(profilePath, JSON.stringify(mergedProfile, null, 2), "utf-8");
 
   return metrics;
 }
@@ -824,16 +900,48 @@ export function synthesizeVoiceProfileFromDocs(documents: any[]): any {
 
   const profileDir = path.join(process.cwd(), "data", "profile");
   if (!fs.existsSync(profileDir)) fs.mkdirSync(profileDir, { recursive: true });
-  fs.writeFileSync(path.join(profileDir, "voiceDNA.json"), JSON.stringify(metrics, null, 2), "utf-8");
+
+  // 1. Save data/profile/metrics.json
+  fs.writeFileSync(path.join(profileDir, "metrics.json"), JSON.stringify(metrics, null, 2), "utf-8");
+
+  // 2. Generate and save data/profile/fingerprint.json
+  const existingFingerprint = loadFingerprint();
+  const fingerprint = generateFingerprint(metrics, existingFingerprint);
+  saveFingerprint(fingerprint);
 
   const avgLenDisplay = metrics.sentenceLength.averageWords !== null ? `~${Math.round(metrics.sentenceLength.averageWords)}` : "moderate";
   const transDensityDisplay = metrics.transitionFrequency.densityPer100Words !== null ? `${metrics.transitionFrequency.densityPer100Words}` : "standard";
 
   const synthesizedGuidelines = `# Calibrated Academic Voice Guidelines
-- Maintain scholarly tone with deliberate syntactic rhythm (averaging ${avgLenDisplay} words/sentence).
-- Transition density: ${transDensityDisplay} per 100 words (favors: ${topTrans.slice(0, 5).join(", ") || "standard connectors"}).
-- Strictly preserve all mathematical formulations, technical figures, statistical metrics, and bibliographic citations.
-- Never use colloquialisms or generic conversational filler.`;
+${fingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
+
+## Measurable Quantitative Habits:
+- Average Sentence Length: ${metrics.sentenceLength.averageWords ?? "—"} words
+- Clause Density: ${metrics.clauseDensity.averageClausesPerSentence ?? "—"} clauses/sentence
+- Clarification Frequency: ${metrics.clarificationFrequency.densityPer100Words ?? "—"} markers / 100 words
+- Transition Density: ${metrics.transitionFrequency.densityPer100Words ?? "—"} per 100 words
+- Lexical Type-Token Ratio: ${metrics.vocabularyRepetition.typeTokenRatio ?? "—"}
+- Workflow Explanation Score: ${metrics.workflowExplanationTendency.tendencyScore ?? "—"}/100`;
+
+  // 3. Save merged data/profile/voiceDNA.json
+  const mergedProfile = {
+    version: "1.0",
+    corpusSummary: metrics.corpusSummary,
+    metrics,
+    fingerprint,
+    sentenceLength: metrics.sentenceLength,
+    clauseDensity: metrics.clauseDensity,
+    paragraphLength: metrics.paragraphLength,
+    transitionFrequency: metrics.transitionFrequency,
+    clarificationFrequency: metrics.clarificationFrequency,
+    punctuationHabits: metrics.punctuationHabits,
+    vocabularyRepetition: metrics.vocabularyRepetition,
+    workflowExplanationTendency: metrics.workflowExplanationTendency,
+    qualitative_rules: fingerprint.qualitative_rules,
+    synthesized_guidelines: synthesizedGuidelines,
+    updated_at: new Date().toISOString(),
+  };
+  fs.writeFileSync(path.join(profileDir, "voiceDNA.json"), JSON.stringify(mergedProfile, null, 2), "utf-8");
 
   return {
     id: "default-profile",
@@ -1065,7 +1173,57 @@ export function updateVoiceDNAMetricsWithEdit(userEditedText: string): StyleDNAM
   if (!fs.existsSync(profileDir)) {
     fs.mkdirSync(profileDir, { recursive: true });
   }
-  fs.writeFileSync(profilePath, JSON.stringify(currentMetrics, null, 2), "utf-8");
+
+  // 1. Save updated metrics.json
+  fs.writeFileSync(path.join(profileDir, "metrics.json"), JSON.stringify(currentMetrics, null, 2), "utf-8");
+
+  // 2. Load existing fingerprint and merge
+  const existingFingerprint = loadFingerprint();
+  const fingerprint = generateFingerprint(currentMetrics, existingFingerprint);
+
+  // 3. Save merged voiceDNA.json
+  const mergedProfile = {
+    version: "1.0",
+    corpusSummary: currentMetrics.corpusSummary,
+    metrics: currentMetrics,
+    fingerprint,
+    sentenceLength: currentMetrics.sentenceLength,
+    clauseDensity: currentMetrics.clauseDensity,
+    paragraphLength: currentMetrics.paragraphLength,
+    transitionFrequency: currentMetrics.transitionFrequency,
+    clarificationFrequency: currentMetrics.clarificationFrequency,
+    punctuationHabits: currentMetrics.punctuationHabits,
+    vocabularyRepetition: currentMetrics.vocabularyRepetition,
+    workflowExplanationTendency: currentMetrics.workflowExplanationTendency,
+    qualitative_rules: fingerprint.qualitative_rules,
+    updated_at: new Date().toISOString(),
+  };
+  fs.writeFileSync(profilePath, JSON.stringify(mergedProfile, null, 2), "utf-8");
 
   return currentMetrics;
 }
+
+/**
+ * Loads deterministic metrics from data/profile/metrics.json (or fallback to voiceDNA.json)
+ */
+export function loadMetrics(): StyleDNAMetrics | null {
+  const metricsPath = path.join(process.cwd(), "data", "profile", "metrics.json");
+  if (fs.existsSync(metricsPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(metricsPath, "utf-8"));
+    } catch (err) {
+      console.warn("Could not load metrics.json:", err);
+    }
+  }
+  const profilePath = path.join(process.cwd(), "data", "profile", "voiceDNA.json");
+  if (fs.existsSync(profilePath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(profilePath, "utf-8"));
+      return data.metrics || data;
+    } catch (err) {
+      console.warn("Could not load voiceDNA.json:", err);
+    }
+  }
+  return null;
+}
+

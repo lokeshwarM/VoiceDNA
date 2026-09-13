@@ -8,6 +8,7 @@ import {
   StructuralChange,
 } from "../styleDNA/extract";
 import { rebuildVoiceDNA } from "../styleDNA/corpus";
+import { updateFingerprintConfidence } from "../styleDNA/fingerprint";
 
 export interface LearnFromEditResult {
   rule: LearnedRule;
@@ -45,8 +46,11 @@ export async function learnFromManualEdits(
   // 2. Detect structural writing habit differences
   const structuralChanges = detectStructuralChanges(originalAIOutput, userEditedText);
 
-  // 3. Update VoiceDNA metrics in data/profile/voiceDNA.json
+  // 3. Update VoiceDNA metrics in data/profile/metrics.json and voiceDNA.json
   updateVoiceDNAMetricsWithEdit(userEditedText);
+
+  // 4. Update fingerprint confidence based on structural changes
+  updateFingerprintConfidence(structuralChanges);
 
   // 4. Extract actionable style rule
   const systemPrompt = `You are an expert computational writing coach.
@@ -155,14 +159,13 @@ ${
     String(totalEditsCount)
   );
 
+  // 6. Rebuild profile (metrics, fingerprint, voiceDNA) after every edit
   let fingerprintRebuilt = false;
-  if (totalEditsCount > 0 && totalEditsCount % 20 === 0) {
-    try {
-      await rebuildVoiceDNA();
-      fingerprintRebuilt = true;
-    } catch (err: any) {
-      console.error("Failed to auto-rebuild fingerprint at 20 edits milestone:", err.message);
-    }
+  try {
+    await rebuildVoiceDNA();
+    fingerprintRebuilt = true;
+  } catch (err: any) {
+    console.error("Failed to auto-rebuild voiceDNA profile after edit:", err.message);
   }
 
   return {

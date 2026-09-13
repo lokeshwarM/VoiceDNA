@@ -108,6 +108,21 @@ export function extractNumbers(text: string): string[] {
 }
 
 /**
+ * Extracts list items (ordered and unordered bullets) from text.
+ */
+export function extractLists(text: string): string[] {
+  const lines = text.split("\n");
+  const listItems: string[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^(?:[-*+]|\d+[\.\)])\s+\S+/.test(trimmed)) {
+      listItems.push(trimmed);
+    }
+  }
+  return listItems;
+}
+
+/**
  * Compares draft input and rewritten output to verify preservation of citations, equations, and numbers.
  */
 export function verifyFidelity(draftInput: string, rewrittenOutput: string): FidelityReport {

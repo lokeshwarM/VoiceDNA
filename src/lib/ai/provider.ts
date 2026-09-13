@@ -103,9 +103,14 @@ export async function callLLM(options: LLMRequestOptions): Promise<string> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(180000),
       });
     } catch (err: any) {
+      if (err.name === "TimeoutError" || err.message?.toLowerCase().includes("timeout")) {
+        throw new Error(
+          `Ollama request timed out while generating with '${model}'. The model is computing on CPU/GPU. Try running '${launchCommand}' in terminal.`
+        );
+      }
       throw new Error(
         `Ollama is not running at ${baseUrl}. Please start Ollama by running:\n\n${launchCommand}`
       );

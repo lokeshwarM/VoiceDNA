@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { draftInput, sectionType, customInstructions, title } = body;
+    const { draftInput, sectionType, customInstructions, title, mode } = body;
 
     if (!draftInput || !draftInput.trim()) {
       return NextResponse.json(
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       sectionType: sectionType || "General Academic",
       customInstructions,
       title,
+      mode: mode || "preserve",
     });
 
     return NextResponse.json({

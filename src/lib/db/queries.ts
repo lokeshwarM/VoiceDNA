@@ -70,12 +70,14 @@ export interface RewriteRecord {
     fidelityScore: number;
     allPreserved: boolean;
     voiceMatch?: any;
+    validation?: any;
   };
   verbatim_check: {
     maxNgramMatch: number;
     isClean: boolean;
     verbatimPhrases: string[];
   };
+  mode?: string;
   created_at: string;
 }
 

@@ -22,6 +22,7 @@ import { DiffViewer } from "./DiffViewer";
 import { FidelityBadges } from "./FidelityBadges";
 import { FidelityReport, VerbatimReport } from "@/lib/ai/fidelity-guard";
 import { VoiceMatchReport } from "@/lib/ai/voice-match";
+import { RewriteMode, RewriteValidationReport } from "@/lib/ai/rewrite-engine";
 
 interface RewriteStudioProps {
   initialDraft?: string;
@@ -54,6 +55,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
 }) => {
   const [draftInput, setDraftInput] = useState(initialDraft);
   const [sectionType, setSectionType] = useState(initialSection);
+  const [rewriteMode, setRewriteMode] = useState<RewriteMode>("preserve");
   const [customInstructions, setCustomInstructions] = useState("");
   const [rewrittenOutput, setRewrittenOutput] = useState(initialOutput);
   const [userEditedText, setUserEditedText] = useState(initialOutput);
@@ -69,6 +71,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
   const [fidelityReport, setFidelityReport] = useState<FidelityReport | null>(null);
   const [noveltyReport, setNoveltyReport] = useState<VerbatimReport | null>(null);
   const [voiceMatchReport, setVoiceMatchReport] = useState<VoiceMatchReport | null>(null);
+  const [validationReport, setValidationReport] = useState<RewriteValidationReport | null>(null);
   const [learnedFeedback, setLearnedFeedback] = useState<{ ruleText: string; category: string } | null>(null);
 
   // Sync if props change (e.g. from history click)
@@ -106,6 +109,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
           draftInput,
           sectionType,
           customInstructions,
+          mode: rewriteMode,
         }),
       });
 
@@ -120,6 +124,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
       setFidelityReport(data.fidelity);
       setNoveltyReport(data.novelty);
       setVoiceMatchReport(data.voiceMatch || null);
+      setValidationReport(data.validation || null);
       setOutputViewMode("rendered");
 
       // Celebrate high fidelity
@@ -254,28 +259,53 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch min-h-[640px]">
         {/* Left Column: Draft Input Workbench */}
         <div className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl space-y-4">
-          {/* Section & Controls Header */}
-          <div className="space-y-3">
+          {/* Section & Rewrite Mode Controls Header */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Target Section
+                Configuration
               </label>
               <span className="text-[11px] font-mono text-slate-400">
                 {draftInput.trim().split(/\s+/).filter(Boolean).length} words
               </span>
             </div>
 
-            <select
-              value={sectionType}
-              onChange={(e) => setSectionType(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-slate-200 focus:outline-none focus:border-indigo-500 shadow-inner"
-            >
-              {SECTION_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[10px] font-medium text-slate-400 mb-1">
+                  Target Section
+                </label>
+                <select
+                  value={sectionType}
+                  onChange={(e) => setSectionType(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-slate-200 focus:outline-none focus:border-indigo-500 shadow-inner"
+                >
+                  {SECTION_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-medium text-indigo-300 mb-1 flex items-center justify-between">
+                  <span>Rewrite Mode</span>
+                  {rewriteMode === "preserve" && (
+                    <span className="text-[9px] text-emerald-400 font-mono">&lt;20% Lexical Edit</span>
+                  )}
+                </label>
+                <select
+                  value={rewriteMode}
+                  onChange={(e) => setRewriteMode(e.target.value as RewriteMode)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-indigo-900/50 text-xs font-medium text-indigo-200 focus:outline-none focus:border-indigo-500 shadow-inner"
+                >
+                  <option value="preserve">Preserve (Default)</option>
+                  <option value="academic_polish">Academic Polish</option>
+                  <option value="strong_voicedna">Strong VoiceDNA</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Draft Input Area */}
@@ -389,7 +419,12 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
           </div>
 
           {/* Fidelity & Novelty Badges */}
-          <FidelityBadges fidelity={fidelityReport} novelty={noveltyReport} voiceMatch={voiceMatchReport} />
+          <FidelityBadges
+            fidelity={fidelityReport}
+            novelty={noveltyReport}
+            voiceMatch={voiceMatchReport}
+            validation={validationReport}
+          />
 
           {/* Output Content Area */}
           <div className="flex-1 flex flex-col min-h-[300px]">

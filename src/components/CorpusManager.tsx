@@ -325,7 +325,18 @@ export const CorpusManager: React.FC<CorpusManagerProps> = ({ onRebuildComplete 
                           {file.fileType}
                         </span>
                         <div>
-                          <span className="font-medium text-slate-200 text-xs block">{file.fileName}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-slate-200 text-xs">{file.fileName}</span>
+                            {file.layer === "personal_thinking" ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                Layer A: Thinking
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                                Layer B: Academic
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-slate-400 font-mono">
                             {formatFileSize(file.sizeBytes)} • data/corpus/{file.fileName}
                           </span>

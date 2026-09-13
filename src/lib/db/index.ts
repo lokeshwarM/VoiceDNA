@@ -66,7 +66,11 @@ function initSchema(db: Database.Database) {
       category TEXT NOT NULL,
       before_snippet TEXT,
       after_snippet TEXT,
-      is_active INTEGER DEFAULT 1,
+      is_active INTEGER DEFAULT 0,
+      observed_count INTEGER DEFAULT 1,
+      accepted_count INTEGER DEFAULT 1,
+      rejected_count INTEGER DEFAULT 0,
+      confidence_pct REAL DEFAULT 100.0,
       created_at TEXT NOT NULL
     );
 
@@ -81,6 +85,18 @@ function initSchema(db: Database.Database) {
   } catch {}
   try {
     db.exec(`ALTER TABLE voice_profiles ADD COLUMN profile_json TEXT;`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE learned_rules ADD COLUMN observed_count INTEGER DEFAULT 1;`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE learned_rules ADD COLUMN accepted_count INTEGER DEFAULT 1;`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE learned_rules ADD COLUMN rejected_count INTEGER DEFAULT 0;`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE learned_rules ADD COLUMN confidence_pct REAL DEFAULT 100.0;`);
   } catch {}
 
   // Initialize default settings (Ollama as primary local engine)

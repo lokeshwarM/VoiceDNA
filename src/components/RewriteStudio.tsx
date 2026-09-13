@@ -21,6 +21,7 @@ import confetti from "canvas-confetti";
 import { DiffViewer } from "./DiffViewer";
 import { FidelityBadges } from "./FidelityBadges";
 import { FidelityReport, VerbatimReport } from "@/lib/ai/fidelity-guard";
+import { VoiceMatchReport } from "@/lib/ai/voice-match";
 
 interface RewriteStudioProps {
   initialDraft?: string;
@@ -67,6 +68,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
 
   const [fidelityReport, setFidelityReport] = useState<FidelityReport | null>(null);
   const [noveltyReport, setNoveltyReport] = useState<VerbatimReport | null>(null);
+  const [voiceMatchReport, setVoiceMatchReport] = useState<VoiceMatchReport | null>(null);
   const [learnedFeedback, setLearnedFeedback] = useState<{ ruleText: string; category: string } | null>(null);
 
   // Sync if props change (e.g. from history click)
@@ -117,6 +119,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
       setCurrentRewriteId(data.id);
       setFidelityReport(data.fidelity);
       setNoveltyReport(data.novelty);
+      setVoiceMatchReport(data.voiceMatch || null);
       setOutputViewMode("rendered");
 
       // Celebrate high fidelity
@@ -386,7 +389,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
           </div>
 
           {/* Fidelity & Novelty Badges */}
-          <FidelityBadges fidelity={fidelityReport} novelty={noveltyReport} />
+          <FidelityBadges fidelity={fidelityReport} novelty={noveltyReport} voiceMatch={voiceMatchReport} />
 
           {/* Output Content Area */}
           <div className="flex-1 flex flex-col min-h-[300px]">

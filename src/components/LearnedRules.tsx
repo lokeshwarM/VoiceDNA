@@ -123,10 +123,34 @@ export const LearnedRules: React.FC<LearnedRulesProps> = ({
                 }`}
               >
                 <div className="space-y-1.5 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold border ${getCategoryColor(rule.category)}`}>
                       {rule.category}
                     </span>
+
+                    {/* Confidence & Evidence Badge */}
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium border ${
+                        (rule.confidence_pct ?? 100) >= 75
+                          ? "bg-emerald-950/50 text-emerald-300 border-emerald-800/40"
+                          : (rule.confidence_pct ?? 100) >= 60
+                          ? "bg-amber-950/50 text-amber-300 border-amber-800/40"
+                          : "bg-rose-950/50 text-rose-300 border-rose-800/40"
+                      }`}
+                      title={`Confidence: ${rule.confidence_pct ?? 100}% | Observed: ${rule.observed_count ?? 1} (${rule.accepted_count ?? 1} corroborating, ${rule.rejected_count ?? 0} contradictory)`}
+                    >
+                      {rule.confidence_pct ?? 100}% Conf • {rule.accepted_count ?? 1}/{rule.observed_count ?? 1} Obs
+                    </span>
+
+                    {(rule.observed_count ?? 1) < 2 && (
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+                        title="Provisional rule: requires at least 2 corroborating observations before becoming active in rewrite engine"
+                      >
+                        Provisional
+                      </span>
+                    )}
+
                     <span className="text-xs text-slate-400">
                       {new Date(rule.created_at).toLocaleDateString()}
                     </span>

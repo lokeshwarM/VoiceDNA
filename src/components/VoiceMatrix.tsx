@@ -130,6 +130,10 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
   const toneDescriptors = profile?.tone_descriptors || ["Analytical", "Precision-Oriented", "Objective"];
   const rhetoricalHabits = profile?.rhetorical_habits || [];
 
+  const layerA = unified?.layerA || unified?.layers?.layerA_personal_thinking;
+  const layerB = unified?.layerB || unified?.layers?.layerB_academic;
+  const runtimeFingerprint = unified?.fingerprint;
+
   const handleCopyJson = () => {
     navigator.clipboard.writeText(profile?.profile_json || JSON.stringify(unified || profile, null, 2));
     setJsonCopied(true);
@@ -208,8 +212,103 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
             </button>
           </div>
           <pre className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 max-h-72 overflow-y-auto leading-relaxed">
-            {profile?.profile_json || JSON.stringify(m, null, 2)}
+            {profile?.profile_json || JSON.stringify(unified || m, null, 2)}
           </pre>
+        </div>
+      )}
+
+      {/* Dual-Layer Architecture Status Card */}
+      {(layerA || layerB || runtimeFingerprint) && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+            <div className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-indigo-400" />
+              <h2 className="text-sm font-semibold text-white">Dual-Layer Writing Engine</h2>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono">
+                Merged Runtime Fingerprint
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400 font-mono">
+              Layer A (Thinking) + Layer B (Academic)
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            {/* Layer A Card */}
+            <div className="p-4 rounded-xl bg-slate-950/60 border border-amber-500/20 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-amber-300">Layer A: Personal Thinking</span>
+                <span className="text-[10px] text-amber-400/80 font-mono">Slang Filtered</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Extracted from personal notes and chat writing. Governs cognitive framing and cadence without conversational slang.
+              </p>
+              <div className="space-y-1.5 pt-1 text-[11px]">
+                <div>
+                  <span className="text-slate-400 font-medium">Cadence: </span>
+                  <span className="text-slate-200">~{layerA?.thought_expansion?.averageWords ?? Math.round(sentLength.averageWords || 30)} words/sentence</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Framing: </span>
+                  <span className="text-slate-300 truncate block">{layerA?.sentence_framing?.directive || "Direct contextual baseline upfront"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Clarification: </span>
+                  <span className="text-slate-300">{(layerA?.clarification_loops?.preferredMarkers || ["specifically", "that is"]).slice(0, 3).join(", ")}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Layer B Card */}
+            <div className="p-4 rounded-xl bg-slate-950/60 border border-cyan-500/20 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-cyan-300">Layer B: Academic Profile</span>
+                <span className="text-[10px] text-cyan-400/80 font-mono">Peer-Review</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Extracted from assignments and papers. Governs scholarly vocabulary, formal transitions, and technical structure.
+              </p>
+              <div className="space-y-1.5 pt-1 text-[11px]">
+                <div>
+                  <span className="text-slate-400 font-medium">Syntactic Depth: </span>
+                  <span className="text-slate-200">~{layerB?.technical_sentence_structure?.clauseDensity ?? clauseDensity.averageClauses ?? 2.4} clauses/sentence</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Connectors: </span>
+                  <span className="text-slate-300">{(layerB?.formal_transitions?.topFormalConnectors || ["Moreover", "Consequently", "Furthermore"]).slice(0, 3).join(", ")}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Citations: </span>
+                  <span className="text-slate-300">{layerB?.citation_handling?.detectedStyle || "Numeric & Author-Date Intact"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Merged Runtime Fingerprint Card */}
+            <div className="p-4 rounded-xl bg-slate-950/60 border border-purple-500/20 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-purple-300">Runtime Fingerprint</span>
+                <span className="text-[10px] text-emerald-400 font-mono">Active Engine</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Synthesized at runtime before rewriting to enforce rhythm, explanation progression, and flow without verbatim copying.
+              </p>
+              <div className="space-y-1.5 pt-1 text-[11px]">
+                <div>
+                  <span className="text-slate-400 font-medium">Explanation Order: </span>
+                  <span className="text-slate-300">Baseline -&gt; Operational Mechanism -&gt; Synthesis</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Rhythm: </span>
+                  <span className="text-slate-300">Layer A pacing + Layer B clause discipline</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-medium">Verification: </span>
+                  <span className="text-purple-300 font-mono">Zero Verbatim + Invariance Guard</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

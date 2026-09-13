@@ -35,10 +35,30 @@ export async function GET() {
     const corpusWords = diskMetrics?.corpusSummary?.totalWords || totalWords;
     const docCount = diskMetrics?.corpusSummary?.totalFiles || documents.length;
 
+    const finalProfile = profile
+      ? {
+          ...profile,
+          profile_json: JSON.stringify(diskMetrics || profileJson),
+          unified_profile: diskMetrics || profileJson,
+        }
+      : {
+          id: "default-voice",
+          name: "Personal Academic VoiceDNA",
+          is_active: 1,
+          tone_descriptors: ["Analytical", "Precision-Oriented", "Objective"],
+          sentence_cadence: {},
+          preferred_transitions: [],
+          rhetorical_habits: [],
+          synthesized_guidelines: "",
+          profile_json: JSON.stringify(diskMetrics || profileJson),
+          unified_profile: diskMetrics || profileJson,
+          updated_at: new Date().toISOString(),
+        };
+
     return NextResponse.json({
       success: true,
       status: hasLearnedVoice ? "Voice Learned" : "Awaiting Training Documents",
-      profile,
+      profile: finalProfile,
       profileJson,
       stats: {
         documentCount: docCount,

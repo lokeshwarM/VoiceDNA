@@ -16,6 +16,7 @@ import {
   FidelityReport,
   VerbatimReport,
 } from "./fidelity-guard";
+import { computeVoiceMatch, VoiceMatchReport } from "./voice-match";
 import { loadMetrics } from "../styleDNA/extract";
 import { loadFingerprint, getFingerprintRules } from "../styleDNA/fingerprint";
 
@@ -31,6 +32,7 @@ export interface RewriteResult {
   rewrittenOutput: string;
   fidelity: FidelityReport;
   novelty: VerbatimReport;
+  voiceMatch: VoiceMatchReport;
   appliedRulesCount: number;
   profileName: string;
   created_at: string;
@@ -103,7 +105,28 @@ ${equations.length > 0 ? `  Required Equations: ${equations.join(" | ")}` : "  (
 - NUMBERS & MEASUREMENTS: You MUST retain every exact numerical figure, percentage, sample size, unit, and p-value.
 ${numbers.length > 0 ? `  Required Figures: ${numbers.join(", ")}` : "  (No specific numbers detected in input)"}`;
 
-  // 6. Build Synthesized Voice Guidelines
+  // 6. Build Dual-Layer Runtime Fingerprint & Synthesized Voice Guidelines
+  let dualLayerPrompt = "";
+  if (fingerprint && (fingerprint as any).merged_directives) {
+    const fp = fingerprint as any;
+    dualLayerPrompt = `\n### DUAL-LAYER RUNTIME FINGERPRINT:
+- Sentence Rhythm: ${fp.merged_directives.sentence_rhythm}
+- Explanation Order: ${fp.merged_directives.explanation_order}
+- Transition Placement: ${fp.merged_directives.transition_placement}
+- Paragraph Flow: ${fp.merged_directives.paragraph_flow}
+
+[Layer A: Personal Cognition Directives (Slang-Filtered)]
+- Sentence Framing: ${fp.layerA_personal_thinking?.sentence_framing || "Establishes clear operational baseline"}
+- Clarification Loops: ${fp.layerA_personal_thinking?.clarification_loops || "Clarifies technical mechanisms concisely"}
+- Thought Expansion: ${fp.layerA_personal_thinking?.thought_expansion || "Expands arguments methodically"}
+
+[Layer B: Academic Discipline Directives]
+- Academic Vocabulary: ${fp.layerB_academic?.academic_vocabulary || "High lexical density and domain terminology"}
+- Formal Transitions: ${fp.layerB_academic?.formal_transitions || "Formal connectors (moreover, consequently, furthermore)"}
+- Citation Protocol: ${fp.layerB_academic?.citation_handling || "Preserve bracketed [1] and author-date citations"}
+- Technical Syntax: ${fp.layerB_academic?.technical_sentence_structure || "Syntactically disciplined clause subordination"}`;
+  }
+
   const voiceGuidelines = profile?.synthesized_guidelines || "Maintain standard formal academic voice with analytical precision.";
 
   const systemPrompt = `You are "VoiceDNA", an expert academic writing assistant calibrated to write in the researcher's distinct academic voice.
@@ -119,6 +142,7 @@ ${invariancePrompt}
 ${metricsPrompt}
 
 ${fingerprintPrompt}
+${dualLayerPrompt}
 
 ### RESEARCHER'S VOICE DNA GUIDELINES:
 ${voiceGuidelines}
@@ -158,9 +182,10 @@ ${draftInput}`;
     .replace(/^(?:Rewritten (?:version|text|draft)?:?\s*\n+)/i, "")
     .trim();
 
-  // 9. Verify Fidelity & Novelty
+  // 9. Verify Fidelity, Novelty & Deterministic Voice Match
   const fidelity = verifyFidelity(draftInput, cleanOutput);
   const novelty = verifyNovelty(cleanOutput, corpusTexts);
+  const voiceMatch = computeVoiceMatch(cleanOutput, metrics);
 
   // 10. Record in rewrite history
   const recordId = `rewrite-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -171,7 +196,10 @@ ${draftInput}`;
     draft_input: draftInput,
     rewritten_output: cleanOutput,
     user_final_text: null,
-    fidelity_data: fidelity,
+    fidelity_data: {
+      ...fidelity,
+      voiceMatch,
+    },
     verbatim_check: novelty,
     created_at: new Date().toISOString(),
   };
@@ -183,6 +211,7 @@ ${draftInput}`;
     rewrittenOutput: cleanOutput,
     fidelity,
     novelty,
+    voiceMatch,
     appliedRulesCount: learnedRules.length,
     profileName: profile?.name || "Academic Voice",
     created_at: record.created_at,

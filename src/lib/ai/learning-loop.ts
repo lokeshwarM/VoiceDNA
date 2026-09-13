@@ -1,6 +1,6 @@
 import { diffWords } from "diff";
 import { callLLM } from "./provider";
-import { addLearnedRule, getAllLearnedRules, LearnedRule } from "../db/queries";
+import { addLearnedRule, getAllLearnedRules, recordRuleFeedback, LearnedRule } from "../db/queries";
 import { getDb } from "../db";
 import {
   detectStructuralChanges,
@@ -119,7 +119,8 @@ ${
     }
   }
 
-  // 5. Deduplication check: NEVER store duplicate examples or rules
+  // 5. Confidence System & Evidence Corroboration:
+  // Check if this edit corroborates or contradicts an existing rule
   const existingRules = getAllLearnedRules();
   const duplicate = existingRules.find(
     (r) =>
@@ -130,10 +131,27 @@ ${
         r.after_snippet?.trim().toLowerCase() === afterSnippet.trim().toLowerCase())
   );
 
+  // Check if the user reverted or rejected any previously learned rule
+  for (const r of existingRules) {
+    if (r.before_snippet && r.after_snippet) {
+      if (
+        userEditedText.toLowerCase().includes(r.before_snippet.toLowerCase()) &&
+        !userEditedText.toLowerCase().includes(r.after_snippet.toLowerCase()) &&
+        r.id !== duplicate?.id
+      ) {
+        recordRuleFeedback(r.id, false);
+      }
+    }
+  }
+
   let finalRule: LearnedRule;
   if (duplicate) {
-    finalRule = duplicate;
+    // Corroborating evidence: increment accepted_count and observed_count
+    // Activates the rule if observed_count >= 2 and confidence_pct >= 60%
+    const updated = recordRuleFeedback(duplicate.id, true);
+    finalRule = updated || duplicate;
   } else {
+    // First observation: insufficient evidence -> provisional (is_active = 0)
     finalRule = {
       id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       rewrite_id: rewriteId || null,
@@ -141,7 +159,11 @@ ${
       category,
       before_snippet: beforeSnippet,
       after_snippet: afterSnippet,
-      is_active: 1,
+      is_active: 0, // Rules with insufficient evidence (<2 observations) must not become active
+      observed_count: 1,
+      accepted_count: 1,
+      rejected_count: 0,
+      confidence_pct: 100.0,
       created_at: new Date().toISOString(),
     };
     addLearnedRule(finalRule);

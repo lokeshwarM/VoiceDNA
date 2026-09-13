@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { parseDocumentBuffer } from "../parser";
-import { extractAndSaveProfileFromProcessed, StyleDNAMetrics, analyzeTextStructure } from "./extract";
+import { extractAndSaveProfileFromProcessed, StyleDNAMetrics, analyzeTextStructure, classifyTextLayer } from "./extract";
 import { getFingerprintRules } from "./fingerprint";
 
 export interface CorpusFileInfo {
@@ -12,6 +12,7 @@ export interface CorpusFileInfo {
   lastModified: string;
   sizeBytes: number;
   processedFileName: string;
+  layer: "personal_thinking" | "academic";
 }
 
 export interface CorpusSummary {
@@ -86,6 +87,7 @@ export async function scanAndSyncCorpus(): Promise<CorpusSummary> {
     const structure = analyzeTextStructure(textContent);
     const words = structure.words;
     const sentences = structure.sentences.length;
+    const layer = classifyTextLayer(textContent, fileName);
 
     fileInfos.push({
       fileName,
@@ -95,6 +97,7 @@ export async function scanAndSyncCorpus(): Promise<CorpusSummary> {
       lastModified: stat.mtime.toISOString(),
       sizeBytes: stat.size,
       processedFileName,
+      layer,
     });
   }
 

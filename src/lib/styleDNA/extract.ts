@@ -1,6 +1,17 @@
 import fs from "fs";
 import path from "path";
-import { generateFingerprint, saveFingerprint, loadFingerprint } from "./fingerprint";
+import {
+  generatePersonalThinkingProfile,
+  generateAcademicProfile,
+  mergeDualLayerProfiles,
+  saveDualLayerProfiles,
+  loadPersonalThinkingProfile,
+  loadAcademicProfile,
+  loadFingerprint,
+  PersonalThinkingProfile,
+  AcademicProfile,
+  RuntimeFingerprint,
+} from "./fingerprint";
 
 export interface StyleDNAMetrics {
   corpusSummary: {
@@ -647,91 +658,191 @@ export function validateStyleDNAMetrics(metrics: StyleDNAMetrics): { valid: bool
 }
 
 /**
+ * Classifies a text into Layer A (personal_thinking) vs Layer B (academic)
+ */
+export function classifyTextLayer(text: string, fileName?: string): "personal_thinking" | "academic" {
+  const name = (fileName || "").toLowerCase();
+  if (
+    name.includes("/academic/") ||
+    name.includes("\\academic\\") ||
+    name.includes("paper") ||
+    name.includes("thesis") ||
+    name.includes("report") ||
+    name.includes("consensus") ||
+    name.includes("assignment")
+  ) {
+    return "academic";
+  }
+  if (
+    name.includes("/personal/") ||
+    name.includes("\\personal\\") ||
+    name.includes("chat") ||
+    name.includes("note") ||
+    name.includes("voice") ||
+    name.includes("filtered")
+  ) {
+    return "personal_thinking";
+  }
+
+  // Content heuristic analysis
+  const academicCitations = (text.match(/\[\d+(?:,\s*\d+)*\]/g) || []).length;
+  const authorDateCitations = (text.match(/\([A-Z][a-zA-Z\s]+,\s*(?:19|20)\d{2}\)/g) || []).length;
+  const formalTerms = (
+    text.match(
+      /\b(?:protocol|byzantine|cryptographic|validation|empirical|methodology|hypothesis|significance|latency|architecture|parameters|consensus)\b/gi
+    ) || []
+  ).length;
+  const academicScore = academicCitations * 3 + authorDateCitations * 3 + formalTerms;
+
+  const chatThinkingMarkers = (
+    text.match(
+      /\b(?:let's take|i mean|i will explain|like that|built and deployed|we will proceed|in campus|user enters|concept is simple|hero|villain|alcohol)\b/gi
+    ) || []
+  ).length;
+
+  if (academicScore > chatThinkingMarkers && academicScore >= 3) {
+    return "academic";
+  }
+  return "personal_thinking";
+}
+
+/**
  * Reads every processed corpus file from data/processed/ and compiles:
- * 1. data/profile/metrics.json (strictly numerical)
- * 2. data/profile/fingerprint.json (qualitative rules & categories)
- * 3. data/profile/voiceDNA.json (merged runtime profile)
+ * 1. data/profile/personal_thinking_profile.json (Layer A: framing, workflow, rhythm, thought expansion, clarification)
+ * 2. data/profile/academic_profile.json (Layer B: academic vocabulary, formal transitions, citation conventions, technical syntax)
+ * 3. data/profile/fingerprint.json (Merged Runtime Fingerprint)
+ * 4. data/profile/metrics.json (Strictly numerical metrics)
+ * 5. data/profile/voiceDNA.json (Consolidated runtime profile)
  */
 export function extractAndSaveProfileFromProcessed(): StyleDNAMetrics {
   const processedDir = path.join(process.cwd(), "data", "processed");
   const profileDir = path.join(process.cwd(), "data", "profile");
 
-  if (!fs.existsSync(processedDir)) {
-    fs.mkdirSync(processedDir, { recursive: true });
-  }
-  if (!fs.existsSync(profileDir)) {
-    fs.mkdirSync(profileDir, { recursive: true });
-  }
+  if (!fs.existsSync(processedDir)) fs.mkdirSync(processedDir, { recursive: true });
+  if (!fs.existsSync(profileDir)) fs.mkdirSync(profileDir, { recursive: true });
 
   const files = fs.readdirSync(processedDir).filter((f) => f.endsWith(".txt"));
-  const texts: string[] = [];
+  const allTexts: string[] = [];
+  const layerATexts: string[] = [];
+  const layerBTexts: string[] = [];
 
   for (const f of files) {
     try {
       const content = fs.readFileSync(path.join(processedDir, f), "utf-8");
       if (content.trim()) {
-        texts.push(content);
+        allTexts.push(content);
+        const layer = classifyTextLayer(content, f);
+        if (layer === "personal_thinking") {
+          layerATexts.push(content);
+        } else {
+          layerBTexts.push(content);
+        }
       }
     } catch (err: any) {
       console.warn(`Error reading processed file ${f}:`, err.message);
     }
   }
 
-  const metrics = extractStyleDNAFromTexts(texts);
+  // Also include any training documents from SQLite to incorporate uploaded academic texts
+  try {
+    const { getAllDocuments } = require("../db/queries");
+    const docs = getAllDocuments();
+    for (const doc of docs) {
+      if (doc.raw_text && doc.raw_text.trim()) {
+        const layer = classifyTextLayer(doc.raw_text, doc.title);
+        if (layer === "academic" && !layerBTexts.includes(doc.raw_text)) {
+          layerBTexts.push(doc.raw_text);
+        } else if (layer === "personal_thinking" && !layerATexts.includes(doc.raw_text)) {
+          layerATexts.push(doc.raw_text);
+        }
+      }
+    }
+  } catch {}
 
-  // Validate before saving
-  const validation = validateStyleDNAMetrics(metrics);
+  const mergedMetrics = extractStyleDNAFromTexts(allTexts.length > 0 ? allTexts : [""]);
+
+  // Validate merged metrics before saving
+  const validation = validateStyleDNAMetrics(mergedMetrics);
   if (!validation.valid) {
     throw new Error(`StyleDNA mathematical validation failed: ${validation.errors.join("; ")}`);
   }
 
-  // 1. Save data/profile/metrics.json
-  const metricsPath = path.join(profileDir, "metrics.json");
-  fs.writeFileSync(metricsPath, JSON.stringify(metrics, null, 2), "utf-8");
+  // 1. Build Layer A: Personal Thinking Profile
+  const personalTexts = layerATexts.length > 0 ? layerATexts : allTexts;
+  const personalMetrics = extractStyleDNAFromTexts(personalTexts);
+  const existingPersonal = loadPersonalThinkingProfile();
+  const personalProfile = generatePersonalThinkingProfile(personalMetrics, existingPersonal);
 
-  // 2. Generate and save data/profile/fingerprint.json
+  // 2. Build Layer B: Academic Profile
+  const academicTexts = layerBTexts.length > 0 ? layerBTexts : (allTexts.length > 0 ? allTexts : [""]);
+  const academicMetrics = extractStyleDNAFromTexts(academicTexts);
+  const existingAcademic = loadAcademicProfile();
+  const academicProfile = generateAcademicProfile(academicMetrics, existingAcademic);
+
+  // 3. Merge Engine: Combine Layer A + Layer B into Runtime Fingerprint
   const existingFingerprint = loadFingerprint();
-  const fingerprint = generateFingerprint(metrics, existingFingerprint);
-  saveFingerprint(fingerprint);
+  const runtimeFingerprint = mergeDualLayerProfiles(personalProfile, academicProfile, existingFingerprint);
 
-  // 3. Save merged runtime profile to data/profile/voiceDNA.json
+  // 4. Save dual layer profiles & fingerprint to data/profile/
+  saveDualLayerProfiles(personalProfile, academicProfile, runtimeFingerprint);
+
+  // 5. Save data/profile/metrics.json
+  const metricsPath = path.join(profileDir, "metrics.json");
+  fs.writeFileSync(metricsPath, JSON.stringify(mergedMetrics, null, 2), "utf-8");
+
+  // 6. Save consolidated runtime profile to data/profile/voiceDNA.json
   const profilePath = path.join(profileDir, "voiceDNA.json");
-  const topTrans = metrics.transitionFrequency.topTransitions.map((t) => t.word);
-  const avgLenDisplay = metrics.sentenceLength.averageWords !== null ? `~${Math.round(metrics.sentenceLength.averageWords)}` : "moderate";
-  const transDensityDisplay = metrics.transitionFrequency.densityPer100Words !== null ? `${metrics.transitionFrequency.densityPer100Words}` : "standard";
+  const synthesizedGuidelines = `# Calibrated Dual-Layer Academic Voice Guidelines
+## Merged Runtime Directives:
+${runtimeFingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
 
-  const synthesizedGuidelines = `# Calibrated Academic Voice Guidelines
-${fingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
+## Layer A (Personal Thinking Scaffolding):
+- Framing: ${personalProfile.sentence_framing.directive}
+- Workflow: ${personalProfile.workflow_explanations.directive}
+- Thought Cadence: ~${Math.round(personalProfile.thought_expansion.averageWords)} words/sentence
+- Clarification Loops: ${personalProfile.clarification_loops.directive}
 
-## Measurable Quantitative Habits:
-- Average Sentence Length: ${metrics.sentenceLength.averageWords ?? "—"} words
-- Clause Density: ${metrics.clauseDensity.averageClausesPerSentence ?? "—"} clauses/sentence
-- Clarification Frequency: ${metrics.clarificationFrequency.densityPer100Words ?? "—"} markers / 100 words
-- Transition Density: ${metrics.transitionFrequency.densityPer100Words ?? "—"} per 100 words
-- Lexical Type-Token Ratio: ${metrics.vocabularyRepetition.typeTokenRatio ?? "—"}
-- Workflow Explanation Score: ${metrics.workflowExplanationTendency.tendencyScore ?? "—"}/100`;
+## Layer B (Academic Standards):
+- Diction: ${academicProfile.academic_vocabulary.directive}
+- Transitions: ${academicProfile.formal_transitions.directive}
+- Citations: ${academicProfile.citation_handling.directive}
+- Subordination: ${academicProfile.technical_sentence_structure.directive}
+
+## Quantitative Target Baseline:
+- Average Sentence Length: ${mergedMetrics.sentenceLength.averageWords ?? "—"} words
+- Clause Density: ${mergedMetrics.clauseDensity.averageClausesPerSentence ?? "—"} clauses/sentence
+- Clarification Frequency: ${mergedMetrics.clarificationFrequency.densityPer100Words ?? "—"} markers / 100 words
+- Transition Density: ${mergedMetrics.transitionFrequency.densityPer100Words ?? "—"} per 100 words
+- Lexical Type-Token Ratio: ${mergedMetrics.vocabularyRepetition.typeTokenRatio ?? "—"}
+- Workflow Explanation Score: ${mergedMetrics.workflowExplanationTendency.tendencyScore ?? "—"}/100`;
 
   const mergedProfile = {
-    version: "1.0",
-    corpusSummary: metrics.corpusSummary,
-    metrics,
-    fingerprint,
-    sentenceLength: metrics.sentenceLength,
-    clauseDensity: metrics.clauseDensity,
-    paragraphLength: metrics.paragraphLength,
-    transitionFrequency: metrics.transitionFrequency,
-    clarificationFrequency: metrics.clarificationFrequency,
-    punctuationHabits: metrics.punctuationHabits,
-    vocabularyRepetition: metrics.vocabularyRepetition,
-    workflowExplanationTendency: metrics.workflowExplanationTendency,
-    qualitative_rules: fingerprint.qualitative_rules,
+    version: "2.0",
+    corpusSummary: mergedMetrics.corpusSummary,
+    metrics: mergedMetrics,
+    layerA: personalProfile,
+    layerB: academicProfile,
+    layers: {
+      layerA_personal_thinking: personalProfile,
+      layerB_academic: academicProfile,
+    },
+    fingerprint: runtimeFingerprint,
+    sentenceLength: mergedMetrics.sentenceLength,
+    clauseDensity: mergedMetrics.clauseDensity,
+    paragraphLength: mergedMetrics.paragraphLength,
+    transitionFrequency: mergedMetrics.transitionFrequency,
+    clarificationFrequency: mergedMetrics.clarificationFrequency,
+    punctuationHabits: mergedMetrics.punctuationHabits,
+    vocabularyRepetition: mergedMetrics.vocabularyRepetition,
+    workflowExplanationTendency: mergedMetrics.workflowExplanationTendency,
+    qualitative_rules: runtimeFingerprint.qualitative_rules,
     synthesized_guidelines: synthesizedGuidelines,
     updated_at: new Date().toISOString(),
   };
 
   fs.writeFileSync(profilePath, JSON.stringify(mergedProfile, null, 2), "utf-8");
 
-  return metrics;
+  return mergedMetrics;
 }
 
 export function getEmptyMetrics(): StyleDNAMetrics {
@@ -904,16 +1015,39 @@ export function synthesizeVoiceProfileFromDocs(documents: any[]): any {
   // 1. Save data/profile/metrics.json
   fs.writeFileSync(path.join(profileDir, "metrics.json"), JSON.stringify(metrics, null, 2), "utf-8");
 
-  // 2. Generate and save data/profile/fingerprint.json
+  // 2. Segregate documents into Layer A and Layer B
+  const layerATexts: string[] = [];
+  const layerBTexts: string[] = [];
+  for (const doc of documents) {
+    if (doc.raw_text && doc.raw_text.trim()) {
+      const layer = classifyTextLayer(doc.raw_text, doc.title);
+      if (layer === "personal_thinking") {
+        layerATexts.push(doc.raw_text);
+      } else {
+        layerBTexts.push(doc.raw_text);
+      }
+    }
+  }
+
+  const personalTexts = layerATexts.length > 0 ? layerATexts : texts;
+  const personalMetrics = extractStyleDNAFromTexts(personalTexts);
+  const existingPersonal = loadPersonalThinkingProfile();
+  const personalProfile = generatePersonalThinkingProfile(personalMetrics, existingPersonal);
+
+  const academicTexts = layerBTexts.length > 0 ? layerBTexts : texts;
+  const academicMetrics = extractStyleDNAFromTexts(academicTexts);
+  const existingAcademic = loadAcademicProfile();
+  const academicProfile = generateAcademicProfile(academicMetrics, existingAcademic);
+
   const existingFingerprint = loadFingerprint();
-  const fingerprint = generateFingerprint(metrics, existingFingerprint);
-  saveFingerprint(fingerprint);
+  const runtimeFingerprint = mergeDualLayerProfiles(personalProfile, academicProfile, existingFingerprint);
+  saveDualLayerProfiles(personalProfile, academicProfile, runtimeFingerprint);
 
   const avgLenDisplay = metrics.sentenceLength.averageWords !== null ? `~${Math.round(metrics.sentenceLength.averageWords)}` : "moderate";
   const transDensityDisplay = metrics.transitionFrequency.densityPer100Words !== null ? `${metrics.transitionFrequency.densityPer100Words}` : "standard";
 
-  const synthesizedGuidelines = `# Calibrated Academic Voice Guidelines
-${fingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
+  const synthesizedGuidelines = `# Calibrated Dual-Layer Academic Voice Guidelines
+${runtimeFingerprint.qualitative_rules.map((r: string) => `- ${r}`).join("\n")}
 
 ## Measurable Quantitative Habits:
 - Average Sentence Length: ${metrics.sentenceLength.averageWords ?? "—"} words
@@ -925,10 +1059,12 @@ ${fingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
 
   // 3. Save merged data/profile/voiceDNA.json
   const mergedProfile = {
-    version: "1.0",
+    version: "2.0",
     corpusSummary: metrics.corpusSummary,
     metrics,
-    fingerprint,
+    layerA: personalProfile,
+    layerB: academicProfile,
+    fingerprint: runtimeFingerprint,
     sentenceLength: metrics.sentenceLength,
     clauseDensity: metrics.clauseDensity,
     paragraphLength: metrics.paragraphLength,
@@ -937,7 +1073,7 @@ ${fingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
     punctuationHabits: metrics.punctuationHabits,
     vocabularyRepetition: metrics.vocabularyRepetition,
     workflowExplanationTendency: metrics.workflowExplanationTendency,
-    qualitative_rules: fingerprint.qualitative_rules,
+    qualitative_rules: runtimeFingerprint.qualitative_rules,
     synthesized_guidelines: synthesizedGuidelines,
     updated_at: new Date().toISOString(),
   };
@@ -1177,15 +1313,22 @@ export function updateVoiceDNAMetricsWithEdit(userEditedText: string): StyleDNAM
   // 1. Save updated metrics.json
   fs.writeFileSync(path.join(profileDir, "metrics.json"), JSON.stringify(currentMetrics, null, 2), "utf-8");
 
-  // 2. Load existing fingerprint and merge
+  // 2. Update dual-layer profiles with blended edit metrics
+  const prevLayerA = loadPersonalThinkingProfile();
+  const prevLayerB = loadAcademicProfile();
+  const layerA = generatePersonalThinkingProfile(currentMetrics, prevLayerA);
+  const layerB = generateAcademicProfile(currentMetrics, prevLayerB);
   const existingFingerprint = loadFingerprint();
-  const fingerprint = generateFingerprint(currentMetrics, existingFingerprint);
+  const fingerprint = mergeDualLayerProfiles(layerA, layerB, existingFingerprint);
+  saveDualLayerProfiles(layerA, layerB, fingerprint);
 
   // 3. Save merged voiceDNA.json
   const mergedProfile = {
-    version: "1.0",
+    version: "2.0",
     corpusSummary: currentMetrics.corpusSummary,
     metrics: currentMetrics,
+    layerA,
+    layerB,
     fingerprint,
     sentenceLength: currentMetrics.sentenceLength,
     clauseDensity: currentMetrics.clauseDensity,
@@ -1226,4 +1369,6 @@ export function loadMetrics(): StyleDNAMetrics | null {
   }
   return null;
 }
+
+export { loadPersonalThinkingProfile, loadAcademicProfile, loadFingerprint };
 

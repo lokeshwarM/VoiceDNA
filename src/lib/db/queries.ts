@@ -46,6 +46,10 @@ export interface LearnedRule {
   before_snippet: string | null;
   after_snippet: string | null;
   is_active: number;
+  observed_count: number;
+  accepted_count: number;
+  rejected_count: number;
+  confidence_pct: number;
   created_at: string;
 }
 
@@ -65,6 +69,7 @@ export interface RewriteRecord {
     equationsPreserved: string[];
     fidelityScore: number;
     allPreserved: boolean;
+    voiceMatch?: any;
   };
   verbatim_check: {
     maxNgramMatch: number;
@@ -200,15 +205,39 @@ export function getAllLearnedRules(): LearnedRule[] {
 
 export function getActiveLearnedRules(): LearnedRule[] {
   const db = getDb();
-  const rows = db.prepare("SELECT * FROM learned_rules WHERE is_active = 1 ORDER BY created_at DESC").all() as any[];
+  // Rules with insufficient evidence (observed_count < 2 or confidence < 60%) must not become active
+  const rows = db
+    .prepare(
+      "SELECT * FROM learned_rules WHERE is_active = 1 AND observed_count >= 2 AND confidence_pct >= 60.0 ORDER BY confidence_pct DESC, accepted_count DESC"
+    )
+    .all() as any[];
   return rows;
 }
 
-export function addLearnedRule(rule: Omit<LearnedRule, "is_active"> & { is_active?: number }) {
+export function addLearnedRule(
+  rule: Omit<LearnedRule, "is_active" | "observed_count" | "accepted_count" | "rejected_count" | "confidence_pct"> & {
+    is_active?: number;
+    observed_count?: number;
+    accepted_count?: number;
+    rejected_count?: number;
+    confidence_pct?: number;
+  }
+) {
   const db = getDb();
+  const observed = rule.observed_count ?? 1;
+  const accepted = rule.accepted_count ?? 1;
+  const rejected = rule.rejected_count ?? 0;
+  const total = observed > 0 ? observed : accepted + rejected;
+  const conf = total > 0 ? Math.round((accepted / total) * 1000) / 10 : 100.0;
+  // Rules with insufficient evidence (observed < 2) must not become active
+  const isActive = rule.is_active !== undefined ? rule.is_active : (total >= 2 && conf >= 60.0 ? 1 : 0);
+
   db.prepare(`
-    INSERT INTO learned_rules (id, rewrite_id, rule_text, category, before_snippet, after_snippet, is_active, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO learned_rules (
+      id, rewrite_id, rule_text, category, before_snippet, after_snippet,
+      is_active, observed_count, accepted_count, rejected_count, confidence_pct, created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     rule.id,
     rule.rewrite_id || null,
@@ -216,9 +245,44 @@ export function addLearnedRule(rule: Omit<LearnedRule, "is_active"> & { is_activ
     rule.category,
     rule.before_snippet || null,
     rule.after_snippet || null,
-    rule.is_active ?? 1,
+    isActive,
+    total,
+    accepted,
+    rejected,
+    conf,
     rule.created_at
   );
+}
+
+export function recordRuleFeedback(ruleId: string, accepted: boolean): LearnedRule | null {
+  const db = getDb();
+  const rule = db.prepare("SELECT * FROM learned_rules WHERE id = ?").get(ruleId) as LearnedRule | undefined;
+  if (!rule) return null;
+
+  const observed = (rule.observed_count || 1) + 1;
+  const acceptedCount = (rule.accepted_count || 1) + (accepted ? 1 : 0);
+  const rejectedCount = (rule.rejected_count || 0) + (accepted ? 0 : 1);
+  const confidence = Math.round((acceptedCount / observed) * 1000) / 10;
+  const isActive = observed >= 2 && confidence >= 60.0 ? 1 : 0;
+
+  db.prepare(`
+    UPDATE learned_rules
+    SET observed_count = ?,
+        accepted_count = ?,
+        rejected_count = ?,
+        confidence_pct = ?,
+        is_active = ?
+    WHERE id = ?
+  `).run(observed, acceptedCount, rejectedCount, confidence, isActive, ruleId);
+
+  return {
+    ...rule,
+    observed_count: observed,
+    accepted_count: acceptedCount,
+    rejected_count: rejectedCount,
+    confidence_pct: confidence,
+    is_active: isActive,
+  };
 }
 
 export function toggleLearnedRule(id: string, is_active: boolean) {

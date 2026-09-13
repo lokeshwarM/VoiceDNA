@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle2, AlertTriangle, ShieldCheck, Sparkles, ChevronDown, ChevronUp, BookOpen, Hash, Binary } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ShieldCheck, Sparkles, ChevronDown, ChevronUp, BookOpen, Hash, Binary, Dna } from "lucide-react";
 import { FidelityReport, VerbatimReport } from "@/lib/ai/fidelity-guard";
+import { VoiceMatchReport } from "@/lib/ai/voice-match";
 
 interface FidelityBadgesProps {
   fidelity?: FidelityReport | null;
   novelty?: VerbatimReport | null;
+  voiceMatch?: VoiceMatchReport | null;
 }
 
-export const FidelityBadges: React.FC<FidelityBadgesProps> = ({ fidelity, novelty }) => {
+export const FidelityBadges: React.FC<FidelityBadgesProps> = ({ fidelity, novelty, voiceMatch }) => {
   const [showDetails, setShowDetails] = useState(false);
 
   if (!fidelity) return null;
@@ -135,12 +137,28 @@ export const FidelityBadges: React.FC<FidelityBadgesProps> = ({ fidelity, novelt
             <span className="font-mono font-semibold">{noveltyOk ? "100% Novel" : "Overlap Flagged"}</span>
           </div>
 
+          {/* Deterministic Voice Match Pill */}
+          {voiceMatch && (
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${
+                voiceMatch.overallScore >= 80
+                  ? "bg-purple-950/40 text-purple-300 border-purple-800/50"
+                  : "bg-slate-800/80 text-purple-300 border-purple-800/30"
+              }`}
+              title={voiceMatch.summary}
+            >
+              <Dna className="w-3.5 h-3.5 text-purple-400" />
+              <span>Voice Match:</span>
+              <span className="font-mono font-bold text-purple-200">{voiceMatch.overallScore}%</span>
+            </div>
+          )}
+
           {/* Details Toggle */}
-          {(citationsTotal > 0 || numbersTotal > 0 || equationsTotal > 0 || !noveltyOk) && (
+          {(citationsTotal > 0 || numbersTotal > 0 || equationsTotal > 0 || !noveltyOk || Boolean(voiceMatch)) && (
             <button
               onClick={() => setShowDetails(!showDetails)}
               className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
-              title="Toggle detailed entity preservation breakdown"
+              title="Toggle detailed entity preservation & voice match breakdown"
             >
               {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
@@ -150,7 +168,41 @@ export const FidelityBadges: React.FC<FidelityBadgesProps> = ({ fidelity, novelt
 
       {/* Expanded Breakdown Drawer */}
       {showDetails && (
-        <div className="mt-3 pt-3 border-t border-slate-800/80 text-xs space-y-2 text-slate-300">
+        <div className="mt-3 pt-3 border-t border-slate-800/80 text-xs space-y-3 text-slate-300">
+          {/* 6-Dimension Deterministic Voice Match Breakdown */}
+          {voiceMatch && (
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-purple-900/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-purple-300 flex items-center gap-1.5">
+                  <Dna className="w-3.5 h-3.5 text-purple-400" />
+                  Deterministic Voice Match Breakdown (Compared Exclusively Against Your Profile)
+                </span>
+                <span className="font-mono text-xs font-bold text-purple-200 bg-purple-950/50 px-2 py-0.5 rounded border border-purple-800/40">
+                  {voiceMatch.overallScore}% Overall
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">{voiceMatch.summary}</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-1 text-[11px]">
+                {Object.entries(voiceMatch.dimensions).map(([key, dim]) => (
+                  <div key={key} className="p-2 rounded-lg bg-slate-900/90 border border-slate-800/90 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300 font-medium">{dim.name}</span>
+                      <span className={`font-mono font-bold ${dim.score >= 80 ? 'text-emerald-400' : dim.score >= 65 ? 'text-amber-400' : 'text-slate-400'}`}>
+                        {dim.score}%
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-mono">
+                      target: {dim.target} | actual: {dim.measured}
+                    </div>
+                    <div className="text-[9px] text-slate-500">
+                      {dim.details}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {citationsTotal > 0 && (
             <div>
               <span className="font-semibold text-slate-400">Preserved Citations: </span>

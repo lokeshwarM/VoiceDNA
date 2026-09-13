@@ -123,8 +123,15 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </nav>
 
-          {/* Right Action: Provider Pill & Settings */}
+          {/* Right Action: Voice Learned Badge & Provider Pill & Settings */}
           <div className="flex items-center gap-2.5">
+            {documentCount > 0 && (
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Voice Learned</span>
+              </div>
+            )}
+
             <button
               onClick={onOpenSettings}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white transition shadow-sm"

@@ -211,11 +211,19 @@ export const TrainingPapers: React.FC<TrainingPapersProps> = ({
 
       {/* Ingested Documents List */}
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-lg space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-white">Training Corpus ({documents.length})</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-white">Training Corpus ({documents.length})</h2>
+              {documents.length > 0 && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Voice Learned</span>
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-400">
-              Documents from which your cadence, transition markers, and tone are derived.
+              Documents stored locally in <span className="font-mono text-slate-300">uploads/</span> and parsed into a single unified VoiceDNA profile.
             </p>
           </div>
         </div>
@@ -228,26 +236,44 @@ export const TrainingPapers: React.FC<TrainingPapersProps> = ({
         ) : (
           <div className="divide-y divide-slate-800/80">
             {documents.map((doc) => (
-              <div key={doc.id} className="py-3.5 flex items-center justify-between gap-4">
+              <div key={doc.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-slate-800 text-indigo-400 border border-slate-700/60">
+                  <div className="p-2.5 rounded-xl bg-slate-800 text-indigo-400 border border-slate-700/60 mt-0.5">
                     <FileText className="w-4 h-4" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-200">{doc.title}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded uppercase bg-slate-800 text-slate-400 border border-slate-700">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-100">{doc.title}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded uppercase bg-slate-800 text-slate-300 border border-slate-700">
                         {doc.file_type}
                       </span>
+                      {doc.local_path && (
+                        <span className="text-[10px] font-mono text-slate-400">
+                          (Stored locally)
+                        </span>
+                      )}
                     </div>
-                    <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-400">
-                      <span>{doc.word_count.toLocaleString()} words</span>
+
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 font-mono">
+                      <span className="text-slate-300">{doc.word_count.toLocaleString()} words</span>
                       <span>•</span>
-                      <span>Avg sentence: {doc.metrics?.avgSentenceLength || "N/A"} words</span>
+                      <span>Avg sentence: {doc.metrics?.avgSentenceLength ?? "N/A"} words</span>
+                      {doc.metrics?.paragraphLength?.totalParagraphs && (
+                        <>
+                          <span>•</span>
+                          <span>{doc.metrics.paragraphLength.totalParagraphs} paras ({doc.metrics.paragraphLength.averageWords} words/para)</span>
+                        </>
+                      )}
+                      {doc.metrics?.passiveVsActive?.summary && (
+                        <>
+                          <span>•</span>
+                          <span className="text-emerald-400">{doc.metrics.passiveVsActive.summary}</span>
+                        </>
+                      )}
                       {doc.metrics?.detectedCitationStyle && doc.metrics.detectedCitationStyle !== "None" && (
                         <>
                           <span>•</span>
-                          <span className="text-indigo-400">{doc.metrics.detectedCitationStyle}</span>
+                          <span className="text-indigo-300">{doc.metrics.detectedCitationStyle}</span>
                         </>
                       )}
                     </div>
@@ -256,7 +282,7 @@ export const TrainingPapers: React.FC<TrainingPapersProps> = ({
 
                 <button
                   onClick={() => handleDelete(doc.id, doc.title)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                  className="self-end sm:self-center p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
                   title="Delete document"
                 >
                   <Trash2 className="w-4 h-4" />

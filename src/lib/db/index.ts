@@ -29,6 +29,7 @@ function initSchema(db: Database.Database) {
       file_type TEXT NOT NULL,
       raw_text TEXT NOT NULL,
       word_count INTEGER NOT NULL,
+      local_path TEXT,
       metrics TEXT,
       created_at TEXT NOT NULL
     );
@@ -42,6 +43,7 @@ function initSchema(db: Database.Database) {
       preferred_transitions TEXT,
       rhetorical_habits TEXT,
       synthesized_guidelines TEXT,
+      profile_json TEXT,
       updated_at TEXT NOT NULL
     );
 
@@ -73,6 +75,13 @@ function initSchema(db: Database.Database) {
       value TEXT NOT NULL
     );
   `);
+
+  try {
+    db.exec(`ALTER TABLE training_documents ADD COLUMN local_path TEXT;`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE voice_profiles ADD COLUMN profile_json TEXT;`);
+  } catch {}
 
   // Initialize default settings if missing
   const defaultSettings: Record<string, string> = {

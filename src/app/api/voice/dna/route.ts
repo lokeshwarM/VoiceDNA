@@ -12,9 +12,13 @@ export async function GET() {
 
     const totalWords = documents.reduce((acc, d) => acc + d.word_count, 0);
 
+    const profileJson = profile?.unified_profile || (profile?.profile_json ? JSON.parse(profile.profile_json) : null);
+
     return NextResponse.json({
       success: true,
+      status: "Voice Learned",
       profile,
+      profileJson,
       stats: {
         documentCount: documents.length,
         totalWordsAnalyzed: totalWords,

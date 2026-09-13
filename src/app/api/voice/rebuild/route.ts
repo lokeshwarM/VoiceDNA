@@ -12,8 +12,10 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
+      status: "Voice Learned",
       profile: updatedProfile,
-      message: `Voice DNA rebuilt from ${allDocs.length} documents.`,
+      profileJson: updatedProfile.unified_profile || (updatedProfile.profile_json ? JSON.parse(updatedProfile.profile_json) : null),
+      message: `Voice Learned: Profile successfully rebuilt from ${allDocs.length} documents.`,
     });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

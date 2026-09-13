@@ -6,6 +6,7 @@ export interface TrainingDocument {
   file_type: string;
   raw_text: string;
   word_count: number;
+  local_path?: string | null;
   metrics: {
     avgSentenceLength: number;
     sentenceVariance?: string;
@@ -15,6 +16,10 @@ export interface TrainingDocument {
     detectedCitationStyle: string;
     topTransitions?: string[];
     sampleCount: number;
+    paragraphLength?: any;
+    punctuationHabits?: any;
+    technicalVocabulary?: any;
+    passiveVsActive?: any;
   };
   created_at: string;
 }
@@ -24,14 +29,12 @@ export interface VoiceProfile {
   name: string;
   is_active: number;
   tone_descriptors: string[];
-  sentence_cadence: {
-    avgSentenceLength: number;
-    variance: string;
-    compoundComplexRatio: number;
-  };
+  sentence_cadence: any;
   preferred_transitions: string[];
   rhetorical_habits: string[];
   synthesized_guidelines: string;
+  profile_json?: string | null;
+  unified_profile?: any;
   updated_at: string;
 }
 
@@ -127,14 +130,15 @@ export function getAllDocuments(): TrainingDocument[] {
 export function addDocument(doc: Omit<TrainingDocument, "metrics"> & { metrics: any }) {
   const db = getDb();
   db.prepare(`
-    INSERT INTO training_documents (id, title, file_type, raw_text, word_count, metrics, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO training_documents (id, title, file_type, raw_text, word_count, local_path, metrics, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     doc.id,
     doc.title,
     doc.file_type,
     doc.raw_text,
     doc.word_count,
+    doc.local_path || null,
     JSON.stringify(doc.metrics),
     doc.created_at
   );
@@ -156,11 +160,13 @@ export function getActiveVoiceProfile(): VoiceProfile | null {
     sentence_cadence: JSON.parse(row.sentence_cadence || "{}"),
     preferred_transitions: JSON.parse(row.preferred_transitions || "[]"),
     rhetorical_habits: JSON.parse(row.rhetorical_habits || "[]"),
+    unified_profile: row.profile_json ? JSON.parse(row.profile_json) : null,
   };
 }
 
 export function updateVoiceProfile(profile: VoiceProfile) {
   const db = getDb();
+  const profileJson = profile.profile_json || (profile.unified_profile ? JSON.stringify(profile.unified_profile) : null);
   db.prepare(`
     UPDATE voice_profiles
     SET name = ?,
@@ -169,6 +175,7 @@ export function updateVoiceProfile(profile: VoiceProfile) {
         preferred_transitions = ?,
         rhetorical_habits = ?,
         synthesized_guidelines = ?,
+        profile_json = ?,
         updated_at = ?
     WHERE id = ?
   `).run(
@@ -178,6 +185,7 @@ export function updateVoiceProfile(profile: VoiceProfile) {
     JSON.stringify(profile.preferred_transitions),
     JSON.stringify(profile.rhetorical_habits),
     profile.synthesized_guidelines,
+    profileJson,
     profile.updated_at,
     profile.id
   );

@@ -80,6 +80,11 @@ export interface RewriteResult {
   profileName: string;
   created_at: string;
   timings: RewriteTimings;
+  truncated?: boolean;
+  truncationReason?: string;
+  generatedTokens?: number;
+  maxTokens?: number;
+  truncationMessage?: string;
 }
 
 /**
@@ -280,6 +285,266 @@ export function computeRewriteValidation(
   };
 }
 
+export interface TruncationDetectionResult {
+  isTruncated: boolean;
+  reason?: string;
+  generatedTokens?: number;
+  maxTokens?: number;
+  message?: string;
+}
+
+/**
+ * Detects whether the generated rewrite output was truncated.
+ * A response is considered truncated when:
+ * 1. The stream ends because the model reached the token limit (doneReason === "length" or evalCount >= maxTokens).
+ * 2. The output ends abruptly in the middle of a sentence/word (no terminal punctuation).
+ * 3. Ollama reports a non-complete stop reason (doneReason !== "stop").
+ */
+export function detectTruncation(params: {
+  content: string;
+  doneReason?: string;
+  evalCount?: number;
+  maxTokens?: number;
+}): TruncationDetectionResult {
+  const { content, doneReason, evalCount, maxTokens } = params;
+  const trimmed = content.trim();
+
+  if (!trimmed) {
+    return {
+      isTruncated: false,
+      generatedTokens: evalCount,
+      maxTokens,
+    };
+  }
+
+  // 1. Model reached token limit (Ollama length reason or evalCount reached maxTokens)
+  const reachedTokenLimit =
+    doneReason === "length" ||
+    (typeof evalCount === "number" && typeof maxTokens === "number" && evalCount >= maxTokens);
+
+  // 2. Ollama reports a non-complete stop reason (e.g., anything other than "stop")
+  const nonCompleteStopReason =
+    typeof doneReason === "string" && doneReason.length > 0 && doneReason !== "stop";
+
+  // 3. Output ends abruptly in the middle of a sentence or word (missing terminal punctuation)
+  const endsWithTerminalPunctuation = /[.!?]["'’”)\]}`*_~]*$/.test(trimmed);
+  const endsAbruptly = !endsWithTerminalPunctuation;
+
+  if (reachedTokenLimit || nonCompleteStopReason || endsAbruptly) {
+    const reasons: string[] = [];
+    if (reachedTokenLimit) {
+      reasons.push(`Token limit reached (${evalCount ?? "?"}/${maxTokens ?? "?"})`);
+    }
+    if (nonCompleteStopReason && doneReason !== "length") {
+      reasons.push(`Non-complete stop reason: "${doneReason}"`);
+    }
+    if (endsAbruptly) {
+      reasons.push("Output ends abruptly mid-sentence without terminal punctuation");
+    }
+
+    const tokenMsg = typeof evalCount === "number" ? ` (Generated: ${evalCount} tokens)` : "";
+    const displayMessage = `Output truncated — increase generation limit and retry${tokenMsg}`;
+
+    return {
+      isTruncated: true,
+      reason: reasons.join("; "),
+      generatedTokens: evalCount,
+      maxTokens,
+      message: displayMessage,
+    };
+  }
+
+  return {
+    isTruncated: false,
+    generatedTokens: evalCount,
+    maxTokens,
+  };
+}
+
+/**
+ * Builds the system prompt exclusively for Strong VoiceDNA mode.
+ *
+ * ARCHITECTURE:
+ *   INPUT TEXT  →  CONTENT SOURCE  (facts, entities, numbers, logic only)
+ *   VOICE DNA   →  STYLE SOURCE    (all wording, framing, rhythm, vocabulary)
+ *   ACADEMIC    →  SAFETY FILTER   (no slang/profanity — NOT a style target)
+ *
+ * This prompt is intentionally separate from the preserve/polish prompt
+ * because the "CORE PRIORITY ORDER" of that prompt ("preserve original wording")
+ * is fundamentally incompatible with genuine style transfer.
+ */
+function buildStrongVoiceDNASystemPrompt(params: {
+  fingerprint: ReturnType<typeof loadFingerprint>;
+  profile: ReturnType<typeof getActiveVoiceProfile>;
+  metrics: ReturnType<typeof loadMetrics>;
+  citations: string[];
+  equations: string[];
+  numbers: string[];
+  lists: string[];
+  learnedRulesPrompt: string;
+  sectionType: string;
+}): string {
+  const { fingerprint, profile, metrics, citations, equations, numbers, learnedRulesPrompt, sectionType } = params;
+
+  // Pull live measured values from the corpus profile
+  const avgSentenceLenRaw = metrics?.sentenceLength?.averageWords ?? 37;
+  const avgSentenceLen = Math.round(typeof avgSentenceLenRaw === "number" ? avgSentenceLenRaw : 37);
+  const transitionDensity = metrics?.transitionFrequency?.densityPer100Words ?? 9.2;
+  const clauseDensity = metrics?.clauseDensity?.averageClausesPerSentence ?? 3.1;
+
+  // Layer A personal thinking directives from live fingerprint
+  const fp = fingerprint as any;
+  const sentenceFraming =
+    fp?.layerA_personal_thinking?.sentence_framing ||
+    "establishes direct contextual baseline before introducing complex operational mechanics; anchors problem space upfront";
+  const clarificationLoops =
+    fp?.layerA_personal_thinking?.clarification_loops ||
+    "deploys immediate clarification loops (e.g. 'for example', 'that is', 'let\'s take') to ground theoretical propositions";
+  const workflowExplanations =
+    fp?.layerA_personal_thinking?.workflow_explanations ||
+    "structures explanations with sequential procedural progression (initial setup -> core mechanism -> empirical outcome)";
+  const thoughtExpansion =
+    fp?.layerA_personal_thinking?.thought_expansion ||
+    `develops expansive multi-part reasoning (averaging ~${avgSentenceLen} words/sentence), thoroughly expanding propositions before concluding`;
+  const transitionOrder =
+    fp?.layerA_personal_thinking?.transition_order ||
+    "orders transitional thoughts deductively: establishes premise, introduces sequential mechanism, and summarizes operational impact";
+  const paragraphRhythm =
+    fp?.layerA_personal_thinking?.paragraph_rhythm ||
+    "maintains modular, single-focus paragraph rhythm targeting one discrete conceptual block per section";
+  const explanationOrder =
+    fp?.merged_directives?.explanation_order ||
+    "Structures theoretical explanations with sequential procedural progression: establish contextual baseline -> formalize operational mechanism -> evaluate outcomes.";
+
+  // Invariance section (CONTENT invariants — these survive style transfer)
+  const invarianceBlock = `### STRICT INVARIANTS — NEVER CHANGE THESE (THEY ARE CONTENT, NOT STYLE):
+- CITATIONS: Preserve all verbatim (${citations.length > 0 ? citations.join(", ") : "e.g. [1]"}).
+- EQUATIONS: Preserve all LaTeX exactly (${equations.length > 0 ? equations.join(" | ") : "none detected"}).
+- NUMBERS: Retain every exact numerical value, percentage, unit, and measurement (${numbers.length > 0 ? numbers.join(", ") : "none detected"}).
+- TECHNICAL ENTITIES: Preserve all acronyms, model names, algorithm names, and domain-specific terms exactly as given in the input.
+- LISTS: Preserve structured lists without flattening.`;
+
+  // Synthesized voice guidelines from the live voice profile
+  const voiceGuidelines: string = (profile as any)?.synthesized_guidelines || "";
+
+  return `You are "VoiceDNA", a writing style transfer engine.
+
+YOUR MISSION IS STYLE TRANSFER — NOT TEXT PRESERVATION OR POLISHING.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FUNDAMENTAL ARCHITECTURE (READ THIS FIRST):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The input text is a CONTENT SOURCE — it tells you WHAT facts to convey.
+The author's VoiceDNA corpus is a STYLE SOURCE — it tells you HOW to say it.
+These are completely separate concerns.
+
+DO NOT preserve the input's wording.
+DO NOT polish the input's phrasing.
+DO NOT treat the input as a draft to edit.
+
+INSTEAD, follow exactly these three steps:
+  STEP 1 — EXTRACT from the input: every fact, technical entity, numerical value,
+             causal claim, logical relationship, and conclusion.
+  STEP 2 — DISCARD the input's vocabulary, sentence structure, phrasing, and
+             explanation order entirely.
+  STEP 3 — RECONSTRUCT the paragraph from scratch using ONLY the author's
+             personal VoiceDNA as the stylistic template.
+
+The output must make a reader think: "This sounds like the exact same person who
+wrote the corpus" — not "This is a polished rewrite of the input."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTENT EXTRACTION (from input text — carry these forward):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- All technical entity names (acronyms, model names, algorithm names, protocols)
+- All numerical values, measurements, percentages, thresholds
+- All citations (preserve verbatim)
+- All causal claims ("X enables Y", "Z prevents W")
+- The logical progression of the argument (what the paragraph argues, step by step)
+- All conclusions and outcomes stated
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLE RECONSTRUCTION (author's VoiceDNA — your writing template):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sentence Cadence (CRITICAL):
+- Target ~${avgSentenceLen} words per sentence — this is the author's measured natural cadence from their corpus.
+- Write expansive, multi-clause constructions that thoroughly expand each proposition
+  before moving to the next (measured: ~${clauseDensity} clauses/sentence).
+- Do NOT write short, punchy, journalistic sentences.
+
+Sentence Framing:
+- ${sentenceFraming}
+
+Reasoning Order — structure the paragraph in this sequence:
+- ${explanationOrder}
+
+Workflow Explanation Style:
+- ${workflowExplanations}
+
+Clarification Loops (USE THESE — the author naturally grounds every proposition):
+- ${clarificationLoops}
+- Embed at least one clarification marker per paragraph.
+
+Transition Style (use the author's NATURAL connectors, NOT formal academic openers):
+- The author's top transition words by frequency from corpus: "and", "but", "also", "then", "so"
+- Use additive, sequential, and adversative connectors naturally within sentences.
+- Target ~${transitionDensity} transitions per 100 words.
+- Do NOT open sentences with heavy formal openers like "Furthermore," "Consequently," "Nevertheless," unless it reflects the author's actual usage.
+
+Thought Expansion:
+- ${thoughtExpansion}
+
+Transition Order:
+- ${transitionOrder}
+
+Paragraph Rhythm:
+- ${paragraphRhythm}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACADEMIC PROFILE — SAFETY/VALIDITY FILTER ONLY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The Academic Profile is NOT a style target. It is a content filter only.
+Do NOT include: slang, profanity, texting abbreviations ("u", "idk"), or chat filler.
+The Academic Profile does NOT mean:
+- Use formal vocabulary or elevated synonyms
+- Replace natural words with scholarly equivalents
+- Write in IEEE/journal boilerplate style
+Write as the AUTHOR, not as a journal article.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VOCABULARY — DO NOT ARTIFICIALLY ELEVATE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+This is the author's measured vocabulary preference from their corpus:
+- Use "shows" not "demonstrates"
+- Use "uses" not "utilizes"
+- Use "helps" not "facilitates"
+- Use "problem" not "challenge"
+- Use "method" not "framework"
+- Use "good" not "effective"
+Choose vocabulary that reflects how the author naturally thinks and writes.
+
+${invarianceBlock}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORBIDDEN GENERIC AI PHRASES (NEVER USE):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Do NOT write: "transformative paradigm", "unprecedented", "pivotal role", "robust framework",
+"critical challenge", "architectural foundation", "comprehensive framework", "cutting-edge",
+"notable advancement", "plays a crucial role", "significantly enhances", "effectively addresses",
+"seamless integration", "sophisticated mechanism", "rigorous framework", "multifaceted",
+"state-of-the-art", "delve into", "testament to", "tapestry of", "harnessing the power of".
+
+${voiceGuidelines ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nAUTHOR'S CALIBRATED VOICE PROFILE:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${voiceGuidelines}\n` : ""}${learnedRulesPrompt}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT DIRECTIVE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Return ONLY the reconstructed paragraph for the section: "${sectionType}".
+- Output pure text only — no greetings, no meta-commentary, no explanations.
+- Do NOT begin with "Here is..." or "Rewritten:" or any similar prefix.
+- The paragraph must be complete — do not truncate mid-sentence.`;
+}
+
 /**
  * Executes a single-pass Personal Voice Preservation rewrite.
  * Core Product Equation:
@@ -326,10 +591,29 @@ ${learnedRules.map((r, i) => `${i + 1}. [${r.category.toUpperCase()}] ${r.rule_t
 - NUMBERS & MEASUREMENTS: Retain every exact numerical figure, percentage, sample size, unit, and value (${numbers.length > 0 ? numbers.join(", ") : "none detected"}).
 - LISTS & ENUMERATIONS: Preserve structured bullet points or numbered lists without flattening.`;
 
-  // Mode Specific Directive
-  let modeSpecificPrompt = "";
-  if (mode === "preserve") {
-    modeSpecificPrompt = `### REWRITE MODE: PRESERVE (CORE RULE: MINIMAL EDIT & STRICT IDENTITY PRESERVATION)
+  // Prompt Construction:
+  // Strong VoiceDNA uses a completely separate system prompt enforcing content/style separation.
+  // Preserve and Academic Polish keep the shared minimal-edit preservation frame.
+  let systemPrompt: string;
+
+  if (mode === "strong_voicedna") {
+    // Dedicated style-transfer prompt — input is CONTENT source, VoiceDNA is STYLE source
+    systemPrompt = buildStrongVoiceDNASystemPrompt({
+      fingerprint,
+      profile,
+      metrics,
+      citations,
+      equations,
+      numbers,
+      lists,
+      learnedRulesPrompt,
+      sectionType,
+    });
+  } else {
+    // Preserve + Academic Polish: shared minimal-edit frame ("preserve original wording" governs)
+    let modeSpecificPrompt = "";
+    if (mode === "preserve") {
+      modeSpecificPrompt = `### REWRITE MODE: PRESERVE (CORE RULE: MINIMAL EDIT & STRICT IDENTITY PRESERVATION)
 - PERFORM THE SMALLEST POSSIBLE EDIT.
 - If the input is already grammatically acceptable and understandable: KEEP IT VERBATIM (OUTPUT ≈ INPUT).
 - Do NOT rewrite or touch sentences that are already clear.
@@ -342,22 +626,18 @@ ${learnedRules.map((r, i) => `${i + 1}. [${r.category.toUpperCase()}] ${r.rule_t
   * Input: "A dual-layer TrajectoryLSTM recurrent neural network for dead-reckoning of 3-D flight dynamics in GPS-absent environments."
   * Output: "We use a dual-layer TrajectoryLSTM recurrent neural network for dead-reckoning of 3-D flight dynamics in GPS-absent environments."
   * (Fix incomplete fragments with the smallest possible addition; do NOT rewrite the whole sentence.)`;
-  } else if (mode === "academic_polish") {
-    modeSpecificPrompt = `### REWRITE MODE: ACADEMIC POLISH
+    } else {
+      modeSpecificPrompt = `### REWRITE MODE: ACADEMIC POLISH
 - Focus purely on mechanical grammar, punctuation, and clause flow.
 - STRICTLY RETAIN the author's original vocabulary, phrasing, and reasoning order.
 - Do NOT replace natural words with elevated scholarly synonyms.`;
-  } else {
-    modeSpecificPrompt = `### REWRITE MODE: STRONG VOICEDNA
-- Align the output strictly to the author's natural explanation progression and rhythm.
-- Do NOT introduce generic LLM academic fluff.`;
-  }
+    }
 
-  // Layer Directives: Layer A = Thinking flow; Layer B = Safety boundary filter only
-  let layersPrompt = "";
-  if (fingerprint && (fingerprint as any).merged_directives) {
-    const fp = fingerprint as any;
-    layersPrompt = `### AUTHOR'S PERSONAL COGNITION STYLE (LAYER A - PRESERVE THIS THINKING STYLE):
+    // Layer Directives: Layer A = Thinking flow; Layer B = Safety boundary filter only
+    let layersPrompt = "";
+    if (fingerprint && (fingerprint as any).merged_directives) {
+      const fp = fingerprint as any;
+      layersPrompt = `### AUTHOR'S PERSONAL COGNITION STYLE (LAYER A - PRESERVE THIS THINKING STYLE):
 - How the author introduces ideas: ${fp.layerA_personal_thinking?.sentence_framing || "Direct baseline setup"}
 - How the author clarifies mechanisms: ${fp.layerA_personal_thinking?.clarification_loops || "Concise grounding"}
 - How the author expands arguments: ${fp.layerA_personal_thinking?.thought_expansion || "Methodical step-by-step logic"}
@@ -366,11 +646,11 @@ ${learnedRules.map((r, i) => `${i + 1}. [${r.category.toUpperCase()}] ${r.rule_t
 ### ACADEMIC PROFILE (LAYER B - FILTER ONLY, NOT A STYLE TARGET):
 - The Academic Profile is ONLY a safety boundary to filter out chat slang, texting abbreviations ("u", "idk"), profanity, or purely casual conversational filler.
 - The Academic Profile MUST NOT be used to replace natural vocabulary, force formal synonyms, or lengthen sentences.`;
-  }
+    }
 
-  const voiceGuidelines = profile?.synthesized_guidelines || "Preserve the author's direct, analytical personal voice.";
+    const voiceGuidelines = profile?.synthesized_guidelines || "Preserve the author's direct, analytical personal voice.";
 
-  const systemPrompt = `You are "VoiceDNA", a specialized personal writing preservation engine.
+    systemPrompt = `You are "VoiceDNA", a specialized personal writing preservation engine.
 
 CORE PRODUCT REQUIREMENT:
 DO NOT "improve", elevate, or standardize the author's writing into standard academic English or journal boilerplate.
@@ -442,6 +722,7 @@ OUTPUT DIRECTIVE:
 Return ONLY the final text for the section: "${sectionType}".
 - Do NOT output conversational framing, greetings, or explanations.
 - Output pure revised text only.`;
+  }
 
   let userPrompt = `DRAFT INPUT TO REWRITE (${sectionType}):
 ${draftInput}`;
@@ -453,15 +734,20 @@ ${draftInput}`;
   // Measure Baseline Input Voice Match (deterministic)
   const inputVoiceMatch = computeVoiceMatch(draftInput, metrics);
 
-  // Configure reasonable num_predict based on input word count
+  // Configure reasonable num_predict based on input word count:
+  // 1. Minimum num_predict of 1024
+  // 2. Prefer Math.max(1024, Math.ceil(inputWordsCount * 3))
+  // 3. No maximum lower than 1024
   const inputWordsCount = draftInput.trim().split(/\s+/).filter(Boolean).length;
-  const numPredict = Math.min(1024, Math.max(300, Math.ceil(inputWordsCount * 1.5)));
+  const numPredict = Math.max(1024, Math.ceil(inputWordsCount * 3));
 
   const promptConstructionMs = Date.now() - promptConstructionStart;
 
-  // 4. Exactly ONE Ollama Streaming Generation
+  // 4. Exactly ONE Ollama Streaming Generation (Do NOT make a second LLM request)
   // In Preserve Mode, use very low temperature (0.05) to enforce minimal-edit discipline
-  const generationTemp = mode === "preserve" ? 0.05 : 0.20;
+  // Strong VoiceDNA needs higher temperature for genuine creative reconstruction;
+  // Preserve mode uses near-zero temperature to enforce minimal-edit discipline.
+  const generationTemp = mode === "preserve" ? 0.05 : mode === "strong_voicedna" ? 0.45 : 0.20;
   const streamResult = await callLLMStream({
     messages: [
       { role: "system", content: systemPrompt },
@@ -480,17 +766,34 @@ ${draftInput}`;
   const cleanOutput = cleanAndSanitizeOutput(streamResult.content);
   const sanitizationMs = Date.now() - sanitizationStart;
 
-  // 6. Deterministic Fidelity Validation (0 LLM CALLS)
+  // 6. Truncation Detection (Evaluated after streaming completes)
+  const truncation = detectTruncation({
+    content: cleanOutput,
+    doneReason: streamResult.doneReason,
+    evalCount: streamResult.evalCount,
+    maxTokens: numPredict,
+  });
+
+  if (truncation.isTruncated) {
+    console.warn(
+      `[VoiceDNA Truncation Warning] ${truncation.message}. Reason: ${truncation.reason}`
+    );
+  }
+
+  // 7. Deterministic Fidelity Validation (0 LLM CALLS)
   const fidelityStart = Date.now();
   const fidelity = verifyFidelity(draftInput, cleanOutput);
+  if (truncation.isTruncated) {
+    fidelity.allPreserved = false;
+  }
   const fidelityCheckMs = Date.now() - fidelityStart;
 
-  // 7. Deterministic Voice Match (0 LLM CALLS)
+  // 8. Deterministic Voice Match (0 LLM CALLS)
   const voiceMatchStart = Date.now();
   const outputVoiceMatch = computeVoiceMatch(cleanOutput, metrics);
   const voiceMatchMs = Date.now() - voiceMatchStart;
 
-  // 8. Deterministic Validation Report & Novelty Check (0 LLM CALLS)
+  // 9. Deterministic Validation Report & Novelty Check (0 LLM CALLS)
   const validation = computeRewriteValidation(
     draftInput,
     cleanOutput,
@@ -501,7 +804,7 @@ ${draftInput}`;
   );
   const novelty = verifyNovelty(cleanOutput, corpusTexts);
 
-  // 9. Record in SQLite History
+  // 10. Record in SQLite History
   const recordId = `rewrite-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const record: RewriteRecord = {
     id: recordId,
@@ -514,6 +817,11 @@ ${draftInput}`;
       ...fidelity,
       voiceMatch: outputVoiceMatch,
       validation,
+      truncated: truncation.isTruncated,
+      truncationReason: truncation.reason,
+      generatedTokens: truncation.generatedTokens,
+      maxTokens: truncation.maxTokens,
+      truncationMessage: truncation.message,
     },
     verbatim_check: novelty,
     mode,
@@ -547,7 +855,8 @@ Fidelity:             ${fidelityCheckMs} ms
 Voice Match:          ${voiceMatchMs} ms
 Total Rewrite:        ${totalRewriteMs} ms
 Ollama requests for this rewrite: 1
-Words Changed:        ${validation.wordsChanged} (${validation.wordsChangedPct}%)\n`);
+Words Changed:        ${validation.wordsChanged} (${validation.wordsChangedPct}%)
+Truncated:            ${truncation.isTruncated ? `YES (${truncation.reason})` : "NO"}\n`);
 
   return {
     id: recordId,
@@ -561,5 +870,10 @@ Words Changed:        ${validation.wordsChanged} (${validation.wordsChangedPct}%
     profileName: profile?.name || "Personal Voice",
     created_at: record.created_at,
     timings,
+    truncated: truncation.isTruncated,
+    truncationReason: truncation.reason,
+    generatedTokens: truncation.generatedTokens,
+    maxTokens: truncation.maxTokens,
+    truncationMessage: truncation.message,
   };
 }

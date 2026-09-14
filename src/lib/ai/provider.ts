@@ -27,6 +27,9 @@ export interface LLMStreamOptions extends LLMRequestOptions {
 export interface LLMStreamResult {
   content: string;
   timing: LLMStreamTiming;
+  doneReason?: string;
+  evalCount?: number;
+  promptEvalCount?: number;
 }
 
 export interface OllamaStatus {
@@ -106,6 +109,9 @@ export async function callLLMStream(options: LLMStreamOptions): Promise<LLMStrea
   let timeToFirstTokenMs = 0;
   let receivedFirstToken = false;
   let accumulatedContent = "";
+  let doneReason: string | undefined;
+  let evalCount: number | undefined;
+  let promptEvalCount: number | undefined;
 
   const abortController = new AbortController();
   const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 20000;
@@ -206,6 +212,12 @@ export async function callLLMStream(options: LLMStreamOptions): Promise<LLMStrea
             continue;
           }
 
+          if (chunk.done) {
+            if (chunk.done_reason) doneReason = chunk.done_reason;
+            if (typeof chunk.eval_count === "number") evalCount = chunk.eval_count;
+            if (typeof chunk.prompt_eval_count === "number") promptEvalCount = chunk.prompt_eval_count;
+          }
+
           // Ignore thinking chunks from reasoning models - never expose internal reasoning
           if (chunk.message?.thinking) {
             continue;
@@ -258,6 +270,9 @@ export async function callLLMStream(options: LLMStreamOptions): Promise<LLMStrea
         timeToFirstTokenMs: timeToFirstTokenMs || totalGenerationMs,
         totalGenerationMs,
       },
+      doneReason,
+      evalCount,
+      promptEvalCount,
     };
   } else {
     // Optional fallback provider (OpenAI)
@@ -339,6 +354,15 @@ export async function callLLMStream(options: LLMStreamOptions): Promise<LLMStrea
 
           try {
             const data = JSON.parse(dataStr);
+            if (data.choices?.[0]?.finish_reason) {
+              doneReason = data.choices[0].finish_reason;
+            }
+            if (typeof data.usage?.completion_tokens === "number") {
+              evalCount = data.usage.completion_tokens;
+            }
+            if (typeof data.usage?.prompt_tokens === "number") {
+              promptEvalCount = data.usage.prompt_tokens;
+            }
             const token = data.choices?.[0]?.delta?.content || "";
             if (token) {
               if (!receivedFirstToken) {
@@ -365,6 +389,9 @@ export async function callLLMStream(options: LLMStreamOptions): Promise<LLMStrea
         timeToFirstTokenMs: timeToFirstTokenMs || totalGenerationMs,
         totalGenerationMs,
       },
+      doneReason,
+      evalCount,
+      promptEvalCount,
     };
   }
 }

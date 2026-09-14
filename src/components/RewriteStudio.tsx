@@ -72,6 +72,12 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
   const [validationReport, setValidationReport] = useState<RewriteValidationReport | null>(null);
   const [rewriteTimings, setRewriteTimings] = useState<RewriteTimings | null>(null);
   const [learnedFeedback, setLearnedFeedback] = useState<{ ruleText: string; category: string } | null>(null);
+  const [truncationInfo, setTruncationInfo] = useState<{
+    isTruncated: boolean;
+    message?: string;
+    generatedTokens?: number;
+    maxTokens?: number;
+  } | null>(null);
 
   // Sync if props change (e.g. from history click)
   useEffect(() => {
@@ -100,6 +106,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
       setLoading(true);
       setErrorMessage(null);
       setLearnedFeedback(null);
+      setTruncationInfo(null);
       setRewrittenOutput("");
       setFidelityReport(null);
       setNoveltyReport(null);
@@ -171,14 +178,28 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
             setRewriteTimings(data.timings || null);
             setOutputViewMode("rendered");
 
-            // Celebrate high fidelity
-            if (data.fidelity?.allPreserved) {
-              confetti({
-                particleCount: 30,
-                spread: 50,
-                origin: { y: 0.8 },
-                colors: ["#6366f1", "#10b981", "#3b82f6"],
+            // Handle truncation detection:
+            if (data.truncated) {
+              const tokenMsg = typeof data.generatedTokens === "number" ? ` (Generated: ${data.generatedTokens} tokens)` : "";
+              const msg = `Output truncated — increase generation limit and retry${tokenMsg}`;
+              setTruncationInfo({
+                isTruncated: true,
+                message: msg,
+                generatedTokens: data.generatedTokens,
+                maxTokens: data.maxTokens,
               });
+              setErrorMessage(msg);
+            } else {
+              setTruncationInfo(null);
+              // Celebrate high fidelity ONLY when output is complete and not truncated
+              if (data.fidelity?.allPreserved) {
+                confetti({
+                  particleCount: 30,
+                  spread: 50,
+                  origin: { y: 0.8 },
+                  colors: ["#6366f1", "#10b981", "#3b82f6"],
+                });
+              }
             }
           } else if (event.type === "error") {
             throw new Error(event.error || "Failed to generate academic rewrite.");
@@ -272,7 +293,9 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
             <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
             <div className="flex-1">
               <span className="font-semibold text-amber-300">
-                {errorMessage.toLowerCase().includes("ollama") || errorMessage.includes("11434")
+                {errorMessage.includes("Output truncated") || errorMessage.includes("truncated")
+                  ? "Output Truncation Warning"
+                  : errorMessage.toLowerCase().includes("ollama") || errorMessage.includes("11434")
                   ? "Local Ollama Engine Notice"
                   : "Generation Notice"}
               </span>
@@ -493,6 +516,27 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
             voiceMatch={voiceMatchReport}
             validation={validationReport}
           />
+
+          {/* Truncation Warning Banner */}
+          {truncationInfo?.isTruncated && (
+            <div className="p-3.5 rounded-xl bg-red-950/70 border border-red-700/60 text-red-200 text-xs shadow-lg flex items-start gap-2.5 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+              <div className="flex-1 space-y-1">
+                <div className="font-bold text-red-300">
+                  Output truncated — increase generation limit and retry
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  The model reached its token boundary or stopped prematurely before concluding the text.
+                  {typeof truncationInfo.generatedTokens === "number" && (
+                    <span className="ml-1.5 font-mono text-amber-300 font-semibold">
+                      Tokens generated: {truncationInfo.generatedTokens}
+                      {truncationInfo.maxTokens ? ` / ${truncationInfo.maxTokens}` : ""}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Output Content Area */}
           <div className="flex-1 flex flex-col min-h-[300px]">

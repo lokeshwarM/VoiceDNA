@@ -71,6 +71,11 @@ export interface RewriteRecord {
     allPreserved: boolean;
     voiceMatch?: any;
     validation?: any;
+    truncated?: boolean;
+    truncationReason?: string;
+    generatedTokens?: number;
+    maxTokens?: number;
+    truncationMessage?: string;
   };
   verbatim_check: {
     maxNgramMatch: number;

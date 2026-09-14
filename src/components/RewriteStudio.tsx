@@ -12,8 +12,6 @@ import {
   Brain,
   FileText,
   AlertCircle,
-  Sliders,
-  Send,
   Zap,
   Terminal,
 } from "lucide-react";
@@ -22,7 +20,7 @@ import { DiffViewer } from "./DiffViewer";
 import { FidelityBadges } from "./FidelityBadges";
 import { FidelityReport, VerbatimReport } from "@/lib/ai/fidelity-guard";
 import { VoiceMatchReport } from "@/lib/ai/voice-match";
-import { RewriteMode, RewriteValidationReport } from "@/lib/ai/rewrite-engine";
+import { RewriteMode, RewriteValidationReport, RewriteTimings } from "@/lib/ai/rewrite-engine";
 
 interface RewriteStudioProps {
   initialDraft?: string;
@@ -72,6 +70,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
   const [noveltyReport, setNoveltyReport] = useState<VerbatimReport | null>(null);
   const [voiceMatchReport, setVoiceMatchReport] = useState<VoiceMatchReport | null>(null);
   const [validationReport, setValidationReport] = useState<RewriteValidationReport | null>(null);
+  const [rewriteTimings, setRewriteTimings] = useState<RewriteTimings | null>(null);
   const [learnedFeedback, setLearnedFeedback] = useState<{ ruleText: string; category: string } | null>(null);
 
   // Sync if props change (e.g. from history click)
@@ -90,7 +89,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
     userEditedText.trim().length > 0 &&
     rewrittenOutput.trim() !== userEditedText.trim();
 
-  // Primary Rewrite Trigger
+  // Primary Rewrite Trigger with NDJSON Streaming
   const handleRewrite = async () => {
     if (!draftInput.trim()) {
       setErrorMessage("Please enter a rough draft or bullet points to rewrite.");
@@ -101,6 +100,12 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
       setLoading(true);
       setErrorMessage(null);
       setLearnedFeedback(null);
+      setRewrittenOutput("");
+      setFidelityReport(null);
+      setNoveltyReport(null);
+      setVoiceMatchReport(null);
+      setValidationReport(null);
+      setRewriteTimings(null);
 
       const res = await fetch("/api/rewrite", {
         method: "POST",
@@ -113,28 +118,72 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
         }),
       });
 
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || "Failed to generate academic rewrite.");
+      if (!res.ok) {
+        const errText = await res.text();
+        let msg = errText;
+        try {
+          const j = JSON.parse(errText);
+          if (j.error) msg = j.error;
+        } catch {}
+        throw new Error(msg || `Server error (${res.status})`);
       }
 
-      setRewrittenOutput(data.rewrittenOutput);
-      setUserEditedText(data.rewrittenOutput);
-      setCurrentRewriteId(data.id);
-      setFidelityReport(data.fidelity);
-      setNoveltyReport(data.novelty);
-      setVoiceMatchReport(data.voiceMatch || null);
-      setValidationReport(data.validation || null);
-      setOutputViewMode("rendered");
+      if (!res.body) {
+        throw new Error("No response body stream received.");
+      }
 
-      // Celebrate high fidelity
-      if (data.fidelity?.allPreserved) {
-        confetti({
-          particleCount: 30,
-          spread: 50,
-          origin: { y: 0.8 },
-          colors: ["#6366f1", "#10b981", "#3b82f6"],
-        });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let event: any;
+          try {
+            event = JSON.parse(line);
+          } catch {
+            continue;
+          }
+
+          if (event.type === "token") {
+            accumulated += event.token;
+            // Progressive streaming: update output view immediately.
+            // Do NOT mutate userEditedText during streaming.
+            setRewrittenOutput(accumulated);
+          } else if (event.type === "done") {
+            const data = event.result;
+            setRewrittenOutput(data.rewrittenOutput);
+            setUserEditedText(data.rewrittenOutput);
+            setCurrentRewriteId(data.id);
+            setFidelityReport(data.fidelity);
+            setNoveltyReport(data.novelty);
+            setVoiceMatchReport(data.voiceMatch || null);
+            setValidationReport(data.validation || null);
+            setRewriteTimings(data.timings || null);
+            setOutputViewMode("rendered");
+
+            // Celebrate high fidelity
+            if (data.fidelity?.allPreserved) {
+              confetti({
+                particleCount: 30,
+                spread: 50,
+                origin: { y: 0.8 },
+                colors: ["#6366f1", "#10b981", "#3b82f6"],
+              });
+            }
+          } else if (event.type === "error") {
+            throw new Error(event.error || "Failed to generate academic rewrite.");
+          }
+        }
       }
     } catch (err: any) {
       setErrorMessage(err.message);
@@ -343,7 +392,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
             {loading ? (
               <>
                 <RotateCcw className="w-4 h-4 animate-spin text-white" />
-                <span>Distilling into Your Academic Voice...</span>
+                <span>Generating Stream...</span>
               </>
             ) : (
               <>
@@ -376,7 +425,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
               <button
                 type="button"
                 onClick={() => setOutputViewMode("diff")}
-                disabled={!rewrittenOutput}
+                disabled={!rewrittenOutput || loading}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition disabled:opacity-40 ${
                   outputViewMode === "diff"
                     ? "bg-indigo-600 text-white font-semibold shadow-sm"
@@ -390,7 +439,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
               <button
                 type="button"
                 onClick={() => setOutputViewMode("editor")}
-                disabled={!rewrittenOutput}
+                disabled={!rewrittenOutput || loading}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition disabled:opacity-40 ${
                   outputViewMode === "editor"
                     ? "bg-indigo-600 text-white font-semibold shadow-sm"
@@ -405,17 +454,36 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
               </button>
             </div>
 
-            {/* Copy Button */}
-            {rewrittenOutput && (
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? "Copied!" : "Copy Output"}</span>
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {/* Timing Indicator */}
+              {loading && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-950/70 border border-indigo-700/50 text-indigo-300 text-xs font-medium animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping"></span>
+                  <span>Generating...</span>
+                </div>
+              )}
+
+              {rewriteTimings && !loading && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-800 text-slate-300 text-[11px] font-mono">
+                  <Zap className="w-3 h-3 text-amber-400" />
+                  <span>{(rewriteTimings.totalGenerationMs / 1000).toFixed(1)}s</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-400">TTFT: {rewriteTimings.timeToFirstTokenMs}ms</span>
+                </div>
+              )}
+
+              {/* Copy Button */}
+              {rewrittenOutput && !loading && (
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? "Copied!" : "Copy"}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Fidelity & Novelty Badges */}
@@ -436,22 +504,25 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
                   Enter your draft notes on the left, then click &quot;Transform into My Academic Voice&quot;.
                 </p>
               </div>
-            ) : loading ? (
+            ) : loading && !rewrittenOutput ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 rounded-xl bg-slate-950/40 border border-slate-800/80 text-center space-y-4">
                 <div className="relative w-12 h-12 flex items-center justify-center">
                   <div className="absolute inset-0 rounded-full border-2 border-indigo-500/20 animate-ping"></div>
                   <RotateCcw className="w-6 h-6 text-indigo-400 animate-spin" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-200">Applying Voice DNA Archetype</h3>
+                  <h3 className="text-sm font-semibold text-slate-200">Connecting to Local Ollama</h3>
                   <p className="mt-1 text-xs text-slate-400">
-                    Aligning syntactic cadence and verifying technical fidelity...
+                    Constructing prompt directives and awaiting token stream...
                   </p>
                 </div>
               </div>
-            ) : outputViewMode === "rendered" ? (
-              <div className="flex-1 p-5 rounded-xl bg-slate-950/90 border border-slate-800/80 font-serif text-sm leading-relaxed text-slate-100 overflow-y-auto whitespace-pre-wrap select-text shadow-inner">
-                {userEditedText || rewrittenOutput}
+            ) : outputViewMode === "rendered" || loading ? (
+              <div className="flex-1 p-5 rounded-xl bg-slate-950/90 border border-slate-800/80 font-serif text-sm leading-relaxed text-slate-100 overflow-y-auto whitespace-pre-wrap select-text shadow-inner relative">
+                {rewrittenOutput}
+                {loading && (
+                  <span className="inline-block w-2 h-4 ml-1 bg-indigo-400 animate-pulse align-middle"></span>
+                )}
               </div>
             ) : outputViewMode === "diff" ? (
               <div className="flex-1">

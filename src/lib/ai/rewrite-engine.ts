@@ -37,6 +37,8 @@ export interface RewriteValidationReport {
   totalOutputSentences: number;
   structuralEdits: string[];
   lexicalSubstitutions: LexicalSubstitution[];
+  vocabularyChanges: string[];
+  grammarChanges: string[];
   inputVoiceMatch: VoiceMatchReport;
   outputVoiceMatch: VoiceMatchReport;
   voiceMatchDelta: number;
@@ -81,8 +83,8 @@ export interface RewriteResult {
 }
 
 /**
- * Forbidden Generic Academic Clichés:
- * Phrases that inflate simple thoughts into generic LLM prose.
+ * Forbidden Generic AI & Academic Clichés:
+ * Generic filler phrases that standardize or inflate the author's natural voice.
  * Strictly forbidden in prompt instructions and cleansed deterministically.
  */
 export const FORBIDDEN_ACADEMIC_CLICHES: { pattern: RegExp; replacement: string }[] = [
@@ -90,18 +92,32 @@ export const FORBIDDEN_ACADEMIC_CLICHES: { pattern: RegExp; replacement: string 
   { pattern: /\bunprecedented\b/gi, replacement: "notable" },
   { pattern: /\barchitectural foundation\b/gi, replacement: "architecture" },
   { pattern: /\brobust framework\b/gi, replacement: "framework" },
+  { pattern: /\bcomprehensive framework\b/gi, replacement: "framework" },
+  { pattern: /\brigorous framework\b/gi, replacement: "framework" },
   { pattern: /\bcritical challenge\b/gi, replacement: "problem" },
-  { pattern: /\bensuring operational continuity\b/gi, replacement: "maintaining system continuity" },
+  { pattern: /\bensuring operational continuity\b/gi, replacement: "maintaining continuity" },
   { pattern: /\bpivotal role\b/gi, replacement: "role" },
+  { pattern: /\bplays a crucial role\b/gi, replacement: "is important" },
+  { pattern: /\bplays a pivotal role\b/gi, replacement: "is important" },
   { pattern: /\bdelve into\b/gi, replacement: "examine" },
   { pattern: /\btestament to\b/gi, replacement: "evidence of" },
   { pattern: /\btapestry of\b/gi, replacement: "series of" },
   { pattern: /\bharnessing the power of\b/gi, replacement: "using" },
   { pattern: /\bgroundbreaking\b/gi, replacement: "effective" },
+  { pattern: /\bcutting-edge\b/gi, replacement: "modern" },
+  { pattern: /\bstate-of-the-art\b/gi, replacement: "current" },
+  { pattern: /\bnotable advancement\b/gi, replacement: "improvement" },
+  { pattern: /\bsignificantly enhances\b/gi, replacement: "improves" },
+  { pattern: /\beffectively addresses\b/gi, replacement: "solves" },
+  { pattern: /\bseamless integration\b/gi, replacement: "integration" },
+  { pattern: /\bsophisticated mechanism\b/gi, replacement: "method" },
+  { pattern: /\bmultifaceted\b/gi, replacement: "complex" },
+  { pattern: /\bbeacon of\b/gi, replacement: "guide for" },
+  { pattern: /\bcornerstone\b/gi, replacement: "foundation" },
 ];
 
 /**
- * Sanitizes forbidden generic academic clichés and cleanses the raw LLM output.
+ * Sanitizes forbidden generic academic clichés and cleanses raw LLM output.
  */
 export function sanitizeForbiddenAcademicPhrases(text: string): {
   cleanText: string;
@@ -155,7 +171,8 @@ export function cleanAndSanitizeOutput(raw: string): string {
 }
 
 /**
- * Computes deterministic rewrite validation report comparing draft input against candidate output.
+ * Computes deterministic rewrite validation report comparing draft input against output.
+ * Tracks words changed %, exact vocabulary substitutions, grammar fixes, and Voice Match delta.
  */
 export function computeRewriteValidation(
   draftInput: string,
@@ -176,15 +193,20 @@ export function computeRewriteValidation(
 
   let wordsChanged = 0;
   const lexicalSubstitutions: LexicalSubstitution[] = [];
+  const vocabularyChanges: string[] = [];
+  const grammarChanges: string[] = [];
   const minLen = Math.min(inputWords.length, outputWords.length);
 
   for (let i = 0; i < minLen; i++) {
     const inW = inputWords[i].replace(/[.,;:!?()"']/g, "");
     const outW = outputWords[i].replace(/[.,;:!?()"']/g, "");
-    if (inW.toLowerCase() !== outW.toLowerCase() && inW.length > 2 && outW.length > 2) {
-      if (lexicalSubstitutions.length < 10) {
+    if (inW.toLowerCase() !== outW.toLowerCase() && inW.length > 1 && outW.length > 1) {
+      if (lexicalSubstitutions.length < 15) {
         lexicalSubstitutions.push({ original: inW, replacement: outW });
       }
+      vocabularyChanges.push(`"${inW}" -> "${outW}"`);
+    } else if (inputWords[i] !== outputWords[i]) {
+      grammarChanges.push(`Punctuation/casing edit: "${inputWords[i]}" -> "${outputWords[i]}"`);
     }
   }
 
@@ -215,8 +237,12 @@ export function computeRewriteValidation(
   }
 
   const structuralEdits: string[] = [];
-  if (draftInput.includes("ACO") && rewrittenOutput.includes("Ant Colony Optimisation (ACO)")) {
-    structuralEdits.push("Expanded abbreviation on first reference: ACO");
+  if (wordsChangedPct === 0) {
+    structuralEdits.push("Original wording 100% preserved (0% words changed)");
+  } else if (wordsChangedPct < 5) {
+    structuralEdits.push("Minimal grammatical refinement applied (<5% words changed)");
+  } else {
+    structuralEdits.push(`${wordsChangedPct}% words changed`);
   }
 
   const inputLists = extractLists(draftInput);
@@ -230,12 +256,8 @@ export function computeRewriteValidation(
     structuralEdits.push(`Preserved ${inputCitations.length} citation markers`);
   }
 
-  if (structuralEdits.length === 0) {
-    structuralEdits.push(wordsChangedPct < 15 ? "High verbatim cadence preserved" : "Syntactic refinement applied");
-  }
-
   const voiceMatchDelta = Math.round((outputVoiceMatch.overallScore - inputVoiceMatch.overallScore) * 10) / 10;
-  const preservationGoalMet = mode === "preserve" ? wordsChangedPct <= 20.0 : true;
+  const preservationGoalMet = mode === "preserve" ? wordsChangedPct <= 10.0 : true;
 
   return {
     wordsChanged,
@@ -247,6 +269,8 @@ export function computeRewriteValidation(
     totalOutputSentences: outputSentences.length,
     structuralEdits,
     lexicalSubstitutions,
+    vocabularyChanges,
+    grammarChanges,
     inputVoiceMatch,
     outputVoiceMatch,
     voiceMatchDelta,
@@ -257,17 +281,9 @@ export function computeRewriteValidation(
 }
 
 /**
- * Executes a single-pass Identity-First academic rewrite.
- * Pipeline:
- * Input
- * → load profile & metrics
- * → build prompt (with strict identity preservation priority)
- * → ONE Ollama streaming generation (stream: true, think: false, keep_alive: '10m')
- * → sanitize (strip markdown fences, conversational intros, and forbidden clichés)
- * → deterministic fidelity validation
- * → deterministic Voice Match
- * → save history
- * → return result with timing instrumentation
+ * Executes a single-pass Personal Voice Preservation rewrite.
+ * Core Product Equation:
+ * MY ORIGINAL VOICE + GRAMMAR CORRECTION + NECESSARY CLARITY/READABILITY CORRECTION = FINAL OUTPUT
  */
 export async function executeRewrite(options: RewriteOptions): Promise<RewriteResult> {
   const totalRewriteStart = Date.now();
@@ -289,33 +305,8 @@ export async function executeRewrite(options: RewriteOptions): Promise<RewriteRe
   const fingerprint = loadFingerprint();
   const profileLoadingMs = Date.now() - profileLoadStart;
 
-  // 3. Construct Prompts & Invariance Entities
+  // 3. Construct Prompts & Invariance Directives
   const promptConstructionStart = Date.now();
-  let metricsPrompt = "";
-  if (metrics && metrics.corpusSummary && metrics.corpusSummary.totalWords > 0) {
-    metricsPrompt = `\n### DETERMINISTIC QUANTITATIVE TARGETS (COMPUTED FROM REAL CORPUS):
-- Average Sentence Length: ${metrics.sentenceLength.averageWords !== null ? `${metrics.sentenceLength.averageWords} words (median: ${metrics.sentenceLength.medianWords ?? "—"})` : "—"}
-- Paragraph Rhythm: ${metrics.paragraphLength.averageSentences !== null ? `${metrics.paragraphLength.averageSentences} sentences/para (${metrics.paragraphLength.averageWords ?? "—"} words/para)` : "—"}
-- Clause Density: ${metrics.clauseDensity.averageClausesPerSentence !== null ? `${metrics.clauseDensity.averageClausesPerSentence} clauses/sentence` : "—"}
-- Transition Density: ${metrics.transitionFrequency.densityPer100Words !== null ? `${metrics.transitionFrequency.densityPer100Words} connectors/100 words` : "—"}
-- Clarification Frequency: ${metrics.clarificationFrequency.densityPer100Words !== null ? `${metrics.clarificationFrequency.densityPer100Words} markers/100 words` : "—"}
-- Vocabulary Repetition (TTR): ${metrics.vocabularyRepetition.typeTokenRatio !== null ? `${metrics.vocabularyRepetition.typeTokenRatio}` : "—"}
-- Workflow Tendency: ${metrics.workflowExplanationTendency.tendencyScore !== null ? `${metrics.workflowExplanationTendency.tendencyScore}/100` : "—"}
-- Punctuation Discipline: Semicolons: ${metrics.punctuationHabits.semicolonsPer100Words ?? 0}/100w, Parentheses: ${metrics.punctuationHabits.parenthesesPer100Words ?? 0}/100w, Em-Dashes: ${metrics.punctuationHabits.emDashesPer100Words ?? 0}/100w`;
-  }
-
-  let fingerprintPrompt = "";
-  if (fingerprint && fingerprint.categories && Object.keys(fingerprint.categories).length > 0) {
-    const cats = Object.values(fingerprint.categories).filter((c) => c && c.directive);
-    fingerprintPrompt = `\n### QUALITATIVE FINGERPRINT RULES (CALIBRATED WRITING HABITS):
-${cats.map((c, i) => `${i + 1}. [${c!.name}] (Confidence: ${Math.round(c!.confidence * 100)}%): ${c!.directive}`).join("\n")}`;
-  } else {
-    const legacyRules = getFingerprintRules();
-    if (legacyRules.length > 0) {
-      fingerprintPrompt = `\n### QUALITATIVE FINGERPRINT RULES:
-${legacyRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}`;
-    }
-  }
 
   const citations = extractCitations(draftInput);
   const equations = extractEquations(draftInput);
@@ -324,107 +315,133 @@ ${legacyRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}`;
 
   let learnedRulesPrompt = "";
   if (learnedRules.length > 0) {
-    learnedRulesPrompt = `\n### USER'S LEARNED STYLE PREFERENCES (FROM PREVIOUS MANUAL EDITS - PRIORITIZE THESE):
+    learnedRulesPrompt = `\n### USER'S LEARNED STYLE PREFERENCES (FROM PREVIOUS MANUAL EDITS):
 ${learnedRules.map((r, i) => `${i + 1}. [${r.category.toUpperCase()}] ${r.rule_text}`).join("\n")}`;
   }
 
-  const invariancePrompt = `\n### STRICT PRESERVATION DIRECTIVES:
-- MEANING & FACTUAL INTEGRITY: Preserve the researcher's exact core arguments, hypotheses, findings, technical claims, and relationships with 100% fidelity. Do not hallucinate or alter factual substance.
-- CITATIONS: You MUST preserve all citations verbatim in their original format. Do not renumber or change brackets/parentheses.
-${citations.length > 0 ? `  Required Citations: ${citations.join(", ")}` : "  (No specific citations detected in input)"}
-- MATHEMATICS & EQUATIONS: Preserve all LaTeX expressions, formulas, and symbols ($...$, $$...$$) without alteration.
-${equations.length > 0 ? `  Required Equations: ${equations.join(" | ")}` : "  (No equations detected in input)"}
-- LISTS & ENUMERATIONS: ${lists.length > 0 ? `The input contains ${lists.length} structured list items. You MUST preserve the list structure, bullet points, or numbering hierarchy with precision.` : "If the input contains structured lists (bullet points or numbered lists), preserve their list structure and items with semantic precision."}
-- NUMBERS & MEASUREMENTS: You MUST retain every exact numerical figure, percentage, sample size, unit, and p-value.
-${numbers.length > 0 ? `  Required Figures: ${numbers.join(", ")}` : "  (No specific numbers detected in input)"}`;
+  const invariancePrompt = `### STRICT PRESERVATION OF FACTUAL & STRUCTURAL INVARIANTS:
+- MEANING & FACTUAL INTEGRITY: Preserve the author's exact technical claims, parameters, and relationships with 100% fidelity.
+- CITATIONS: You MUST preserve all citations verbatim in their original format (${citations.length > 0 ? citations.join(", ") : "e.g. [1]"}). Do not renumber or alter.
+- MATHEMATICS & EQUATIONS: Preserve all LaTeX expressions, formulas, and symbols ($...$, $$...$$) without alteration (${equations.length > 0 ? equations.join(" | ") : "none detected"}).
+- NUMBERS & MEASUREMENTS: Retain every exact numerical figure, percentage, sample size, unit, and value (${numbers.length > 0 ? numbers.join(", ") : "none detected"}).
+- LISTS & ENUMERATIONS: Preserve structured bullet points or numbered lists without flattening.`;
 
-  let dualLayerPrompt = "";
-  if (fingerprint && (fingerprint as any).merged_directives) {
-    const fp = fingerprint as any;
-    dualLayerPrompt = `\n### DUAL-LAYER RUNTIME FINGERPRINT:
-- Sentence Rhythm: ${fp.merged_directives.sentence_rhythm}
-- Explanation Order: ${fp.merged_directives.explanation_order}
-- Transition Placement: ${fp.merged_directives.transition_placement}
-- Paragraph Flow: ${fp.merged_directives.paragraph_flow}
-
-[Layer A: Personal Cognition Directives (Slang-Filtered)]
-- Sentence Framing: ${fp.layerA_personal_thinking?.sentence_framing || "Establishes clear operational baseline"}
-- Clarification Loops: ${fp.layerA_personal_thinking?.clarification_loops || "Clarifies technical mechanisms concisely"}
-- Thought Expansion: ${fp.layerA_personal_thinking?.thought_expansion || "Expands arguments methodically"}
-
-[Layer B: Academic Discipline Directives]
-- Academic Vocabulary: ${fp.layerB_academic?.academic_vocabulary || "High lexical density and domain terminology"}
-- Formal Transitions: ${fp.layerB_academic?.formal_transitions || "Formal connectors (moreover, consequently, furthermore)"}
-- Citation Protocol: ${fp.layerB_academic?.citation_handling || "Preserve bracketed [1] and author-date citations"}
-- Technical Syntax: ${fp.layerB_academic?.technical_sentence_structure || "Syntactically disciplined clause subordination"}`;
-  }
-
-  const voiceGuidelines = profile?.synthesized_guidelines || "Maintain standard formal academic voice with analytical precision.";
-
+  // Mode Specific Directive
   let modeSpecificPrompt = "";
   if (mode === "preserve") {
-    modeSpecificPrompt = `### REWRITE MODE: PRESERVE (PRIMARY OBJECTIVE: IDENTITY BEFORE GRAMMAR)
-- You MUST change FEWER than 20% of the author's words.
-- Keep the author's exact sentence framing, phrasing, and structure intact.
-- Fix only grammatical errors, punctuation mistakes, or awkward phrasing.
-- Clarify abbreviations on first reference if helpful (e.g. "The core of ACO establishes..." -> "The core of Ant Colony Optimisation (ACO) establishes...").
-- NEVER rewrite sentences from scratch into grandiose academic prose.
-- Example:
+    modeSpecificPrompt = `### REWRITE MODE: PRESERVE (CORE RULE: MINIMAL EDIT & STRICT IDENTITY PRESERVATION)
+- PERFORM THE SMALLEST POSSIBLE EDIT.
+- If the input is already grammatically acceptable and understandable: KEEP IT VERBATIM (OUTPUT ≈ INPUT).
+- Do NOT rewrite or touch sentences that are already clear.
+- Do NOT expand abbreviations unless strictly needed to resolve ambiguity.
+- Example 1:
   * Input: "The core of ACO establishes the initial delivery paths."
-  * Preferred: "The core of Ant Colony Optimisation (ACO) establishes the initial delivery paths."
-  * FORBIDDEN: "The architectural foundation of this system is anchored by Ant Colony Optimisation..."`;
+  * Output: "The core of ACO establishes the initial delivery paths."
+  * (DO NOT rewrite as "The architectural foundation establishes..." - KEEP THE AUTHOR'S WORDS!)
+- Example 2:
+  * Input: "A dual-layer TrajectoryLSTM recurrent neural network for dead-reckoning of 3-D flight dynamics in GPS-absent environments."
+  * Output: "We use a dual-layer TrajectoryLSTM recurrent neural network for dead-reckoning of 3-D flight dynamics in GPS-absent environments."
+  * (Fix incomplete fragments with the smallest possible addition; do NOT rewrite the whole sentence.)`;
   } else if (mode === "academic_polish") {
     modeSpecificPrompt = `### REWRITE MODE: ACADEMIC POLISH
-- Polish sentence transitions, cohesion, and scholarly clarity while strictly respecting the author's original sentence framing.
-- Avoid puffery, artificial fluff, or grand academic clichés.
-- Keep all technical terms, acronyms, and direct logical assertions intact.`;
+- Focus purely on mechanical grammar, punctuation, and clause flow.
+- STRICTLY RETAIN the author's original vocabulary, phrasing, and reasoning order.
+- Do NOT replace natural words with elevated scholarly synonyms.`;
   } else {
     modeSpecificPrompt = `### REWRITE MODE: STRONG VOICEDNA
-- Align the text closely with the author's dual-layer stylometrics (cadence, explanation progression, and formal connectors).
-- Preserve the author's underlying arguments without introducing generic LLM academic fluff.`;
+- Align the output strictly to the author's natural explanation progression and rhythm.
+- Do NOT introduce generic LLM academic fluff.`;
   }
 
-  const systemPrompt = `You are "VoiceDNA", a specialized academic writing engine calibrated to write in the author's authentic academic voice.
+  // Layer Directives: Layer A = Thinking flow; Layer B = Safety boundary filter only
+  let layersPrompt = "";
+  if (fingerprint && (fingerprint as any).merged_directives) {
+    const fp = fingerprint as any;
+    layersPrompt = `### AUTHOR'S PERSONAL COGNITION STYLE (LAYER A - PRESERVE THIS THINKING STYLE):
+- How the author introduces ideas: ${fp.layerA_personal_thinking?.sentence_framing || "Direct baseline setup"}
+- How the author clarifies mechanisms: ${fp.layerA_personal_thinking?.clarification_loops || "Concise grounding"}
+- How the author expands arguments: ${fp.layerA_personal_thinking?.thought_expansion || "Methodical step-by-step logic"}
+- Explanation Order: ${fp.merged_directives?.explanation_order || "Sequential procedural progression"}
 
-PRIMARY OBJECTIVE:
-PRESERVE THE AUTHOR'S IDENTITY BEFORE IMPROVING GRAMMAR.
-You MUST strictly follow this priority order:
-1. Preserve sentence framing (the way the author opens, anchors, and stages the sentence).
-2. Preserve reasoning order (step-by-step logic and sequence of assertions).
-3. Preserve paragraph rhythm (do not artificially merge or fragment paragraphs).
-4. Preserve technical density (exact terminology, mechanisms, and specificity).
-5. Fix grammar (correct grammatical and syntactic errors without rewriting phrasing).
-6. Improve readability (clarify confusing grammar only where necessary).
-7. Only rewrite wording when strictly necessary.
+### ACADEMIC PROFILE (LAYER B - FILTER ONLY, NOT A STYLE TARGET):
+- The Academic Profile is ONLY a safety boundary to filter out chat slang, texting abbreviations ("u", "idk"), profanity, or purely casual conversational filler.
+- The Academic Profile MUST NOT be used to replace natural vocabulary, force formal synonyms, or lengthen sentences.`;
+  }
 
-FORBIDDEN BEHAVIORS (STRICT NEGATIVE CONSTRAINTS):
-- Do NOT replace concise wording with grand academic phrases.
-- Do NOT introduce phrases like: "transformative paradigm", "unprecedented", "architectural foundation", "robust framework", "critical challenge", "ensuring operational continuity", "pivotal role", "delve into", "testament to", "tapestry of", "harnessing the power of".
-- Do NOT explain concepts already understood by technical readers.
-- Do NOT add unnecessary adjectives.
-- Do NOT split every sentence into perfectly balanced paragraphs.
-- Do NOT increase sentence length merely to sound academic.
-- Keep technical terms, abbreviations, citations, numbers, equations, list structure, and transition order whenever possible.
+  const voiceGuidelines = profile?.synthesized_guidelines || "Preserve the author's direct, analytical personal voice.";
+
+  const systemPrompt = `You are "VoiceDNA", a specialized personal writing preservation engine.
+
+CORE PRODUCT REQUIREMENT:
+DO NOT "improve", elevate, or standardize the author's writing into standard academic English or journal boilerplate.
+The author explicitly REJECTS:
+- standard academic vocabulary or elevated synonyms
+- scholarly vocabulary or formal synonyms
+- generic polished prose or "better-sounding" academic language
+- longer sentences or artificially complex sentences
+- more formal transitions forced into every paragraph
+- generic LLM phrasing
+- IEEE template language, journal boilerplate, textbook prose, ChatGPT academic prose, or Grammarly-style rewriting.
+
+THE OUTPUT MUST SOUND LIKE THE AUTHOR.
+The author's unusual but understandable sentence construction is an essential part of their personal voice. Do NOT remove or standardize it merely because another construction is more conventional.
+
+THE CORE TRANSFORMATION FORMULA:
+AUTHOR'S ORIGINAL VOICE + GRAMMAR CORRECTION + NECESSARY CLARITY/READABILITY CORRECTION = FINAL OUTPUT.
+The output must make a reader think: "This sounds like the exact same person wrote both versions," NOT "This sounds like a professionally polished academic AI rewrite."
+
+CORE PRIORITY ORDER (FOLLOW STRICTLY):
+1. Preserve the author's original wording.
+2. Preserve the author's vocabulary.
+3. Preserve the author's sentence framing (the way sentences open, anchor, and stage thoughts).
+4. Preserve the author's reasoning order (step-by-step logic and sequence of assertions).
+5. Preserve the author's paragraph structure.
+6. Preserve the author's natural rhythm.
+7. Correct grammar.
+8. Correct punctuation.
+9. Correct obvious sentence fragments only when necessary.
+10. Fix unclear wording only when the original wording is genuinely grammatically or logically unclear.
+NOTHING above should ever be used as an excuse to replace natural vocabulary.
+
+VOCABULARY PRESERVATION MANDATE (CRITICAL - DO NOT VIOLATE):
+Do NOT replace words simply because another word sounds more academic or formal:
+- If the author writes "shows" -> KEEP "shows" (do NOT change to "demonstrates")
+- If the author writes "uses" -> KEEP "uses" (do NOT change to "utilizes")
+- If the author writes "helps" -> KEEP "helps" (do NOT change to "facilitates")
+- If the author writes "important" -> KEEP "important" (do NOT change to "significant")
+- If the author writes "problem" -> KEEP "problem" (do NOT change to "challenge")
+- If the author writes "method" -> KEEP "method" (do NOT change to "framework")
+- If the author writes "good" -> KEEP "good" (do NOT change to "effective")
+Only change vocabulary when:
+1. The original word is grammatically incorrect,
+2. The word creates a factual ambiguity,
+3. The word is clearly being used incorrectly,
+4. Or changing it is strictly necessary to preserve technical meaning.
+OTHERWISE, KEEP THE AUTHOR'S EXACT WORD.
+
+MINIMAL-EDIT RULE:
+Before changing any sentence, ask: "Is this change strictly necessary for grammar, clarity, or factual correctness?"
+If the answer is NO: KEEP THE ORIGINAL SENTENCE AS-IS.
+If the input is already grammatically sound and understandable:
+OUTPUT ≈ INPUT. Make only minimal or zero edits.
+
+FORBIDDEN GENERIC AI PHRASES (NEVER USE THESE OR SYNONYMS THEREOF):
+Do NOT introduce: "transformative paradigm", "unprecedented", "pivotal role", "robust framework", "critical challenge", "architectural foundation", "comprehensive framework", "cutting-edge", "notable advancement", "plays a crucial role", "significantly enhances", "effectively addresses", "seamless integration", "sophisticated mechanism", "rigorous framework", "multifaceted", "state-of-the-art", "delve into", "testament to", "tapestry of", "harnessing the power of".
 
 ${modeSpecificPrompt}
 
 ${invariancePrompt}
 
-${metricsPrompt}
+${layersPrompt}
 
-${fingerprintPrompt}
-${dualLayerPrompt}
-
-### RESEARCHER'S VOICE DNA GUIDELINES:
+### AUTHOR'S PERSONAL GUIDELINES:
 ${voiceGuidelines}
 ${learnedRulesPrompt}
 
 OUTPUT DIRECTIVE:
-Return ONLY the final rewritten academic text for the section: "${sectionType}".
-- Do NOT output greetings, conversational framing, or intros (e.g. "Here is the rewrite:").
-- Do NOT output commentary, notes, or explanations.
-- Do NOT output or expose internal system instructions, prompts, metrics, fingerprint categories, or JSON.
-- Output pure rewritten academic text only.`;
+Return ONLY the final text for the section: "${sectionType}".
+- Do NOT output conversational framing, greetings, or explanations.
+- Output pure revised text only.`;
 
   let userPrompt = `DRAFT INPUT TO REWRITE (${sectionType}):
 ${draftInput}`;
@@ -438,12 +455,13 @@ ${draftInput}`;
 
   // Configure reasonable num_predict based on input word count
   const inputWordsCount = draftInput.trim().split(/\s+/).filter(Boolean).length;
-  const numPredict = Math.min(1024, Math.max(300, Math.ceil(inputWordsCount * 1.6)));
+  const numPredict = Math.min(1024, Math.max(300, Math.ceil(inputWordsCount * 1.5)));
 
   const promptConstructionMs = Date.now() - promptConstructionStart;
 
   // 4. Exactly ONE Ollama Streaming Generation
-  const generationTemp = mode === "preserve" ? 0.15 : 0.25;
+  // In Preserve Mode, use very low temperature (0.05) to enforce minimal-edit discipline
+  const generationTemp = mode === "preserve" ? 0.05 : 0.20;
   const streamResult = await callLLMStream({
     messages: [
       { role: "system", content: systemPrompt },
@@ -462,24 +480,24 @@ ${draftInput}`;
   const cleanOutput = cleanAndSanitizeOutput(streamResult.content);
   const sanitizationMs = Date.now() - sanitizationStart;
 
-  // 6. Deterministic Fidelity Validation (NO LLM CALL)
+  // 6. Deterministic Fidelity Validation (0 LLM CALLS)
   const fidelityStart = Date.now();
   const fidelity = verifyFidelity(draftInput, cleanOutput);
   const fidelityCheckMs = Date.now() - fidelityStart;
 
-  // 7. Deterministic Voice Match (NO LLM CALL)
+  // 7. Deterministic Voice Match (0 LLM CALLS)
   const voiceMatchStart = Date.now();
   const outputVoiceMatch = computeVoiceMatch(cleanOutput, metrics);
   const voiceMatchMs = Date.now() - voiceMatchStart;
 
-  // 8. Deterministic Validation Report & Novelty Check (NO LLM CALL)
+  // 8. Deterministic Validation Report & Novelty Check (0 LLM CALLS)
   const validation = computeRewriteValidation(
     draftInput,
     cleanOutput,
     mode,
     inputVoiceMatch,
     outputVoiceMatch,
-    "Single-pass Identity-First Generation"
+    "Personal Voice Preservation (Minimal-Edit Rule)"
   );
   const novelty = verifyNovelty(cleanOutput, corpusTexts);
 
@@ -528,7 +546,8 @@ Sanitization:         ${sanitizationMs} ms
 Fidelity:             ${fidelityCheckMs} ms
 Voice Match:          ${voiceMatchMs} ms
 Total Rewrite:        ${totalRewriteMs} ms
-Ollama requests for this rewrite: 1\n`);
+Ollama requests for this rewrite: 1
+Words Changed:        ${validation.wordsChanged} (${validation.wordsChangedPct}%)\n`);
 
   return {
     id: recordId,
@@ -539,7 +558,7 @@ Ollama requests for this rewrite: 1\n`);
     validation,
     mode,
     appliedRulesCount: learnedRules.length,
-    profileName: profile?.name || "Academic Voice",
+    profileName: profile?.name || "Personal Voice",
     created_at: record.created_at,
     timings,
   };

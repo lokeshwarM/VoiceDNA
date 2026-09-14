@@ -139,15 +139,44 @@ export const FidelityBadges: React.FC<FidelityBadgesProps> = ({ fidelity, novelt
             <span className="font-mono font-semibold">{noveltyOk ? "100% Novel" : "Overlap Flagged"}</span>
           </div>
 
+          {/* Deterministic Voice Validator Badges */}
+          {validation?.voiceValidation && (
+            <>
+              <div
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${
+                  validation.voiceValidation.vocabularyAlignmentPct >= 85
+                    ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/40"
+                    : "bg-amber-950/40 text-amber-300 border-amber-800/40"
+                }`}
+                title="Vocabulary alignment with author's personal corpus preferences"
+              >
+                <span>Corpus Vocab:</span>
+                <span className="font-mono font-bold">{validation.voiceValidation.vocabularyAlignmentPct}%</span>
+              </div>
+
+              <div
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${
+                  validation.voiceValidation.unnecessarySynonymCount === 0
+                    ? "bg-slate-800/80 text-emerald-300 border-emerald-800/40"
+                    : "bg-rose-950/40 text-rose-300 border-rose-800/40"
+                }`}
+                title="Unnecessary academic synonym replacements detected"
+              >
+                <span>Synonym Swaps:</span>
+                <span className="font-mono font-bold">{validation.voiceValidation.unnecessarySynonymCount}</span>
+              </div>
+            </>
+          )}
+
           {/* Lexical Change Rate Badge */}
-          {validation && (
+          {validation && !validation.voiceValidation && (
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${
                 validation.preservationGoalMet
                   ? "bg-emerald-950/40 text-emerald-300 border-emerald-800/40"
                   : "bg-amber-950/40 text-amber-300 border-amber-800/40"
               }`}
-              title={`Lexical change rate: ${validation.wordsChangedPct}% of words modified. Preserve target: <20%.`}
+              title={`Lexical change rate: ${validation.wordsChangedPct}% of words modified.`}
             >
               <span>Lexical Diff:</span>
               <span className="font-mono font-bold">{validation.wordsChangedPct}%</span>
@@ -200,7 +229,7 @@ export const FidelityBadges: React.FC<FidelityBadgesProps> = ({ fidelity, novelt
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/70 pb-2">
                 <span className="font-semibold text-slate-200 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                  Identity Preservation & Validation Report ({validation.mode.toUpperCase()})
+                  Author-Style Compiler Validation ({validation.mode.toUpperCase()})
                 </span>
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${
@@ -208,10 +237,7 @@ export const FidelityBadges: React.FC<FidelityBadgesProps> = ({ fidelity, novelt
                       ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/50"
                       : "bg-amber-950/60 text-amber-300 border-amber-800/50"
                   }`}>
-                    {validation.wordsChangedPct}% Words Changed {validation.mode === "preserve" && (validation.preservationGoalMet ? "(< 20% Goal Met)" : "(> 20% Threshold)")}
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-950/60 text-purple-300 border border-purple-800/50">
-                    {validation.sentencesPreserved}/{validation.totalInputSentences} Sentences Preserved
+                    {validation.voiceValidation?.enforcementVerdict || `${validation.wordsChangedPct}% Words Changed`}
                   </span>
                 </div>
               </div>

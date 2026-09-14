@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
             sectionType: sectionType || "General Academic",
             customInstructions,
             title,
-            mode: mode || "preserve",
+            mode: mode || "exact_voice",
             onToken: (token: string) => {
               sendEvent({ type: "token", token });
             },

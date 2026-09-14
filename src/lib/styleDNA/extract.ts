@@ -12,6 +12,18 @@ import {
   AcademicProfile,
   RuntimeFingerprint,
 } from "./fingerprint";
+import {
+  extractLexicalFingerprint,
+  saveLexicalFingerprint,
+  loadLexicalFingerprint,
+  LexicalFingerprint,
+} from "./lexical-fingerprint";
+import {
+  extractStructuralFingerprint,
+  saveStructuralFingerprint,
+  loadStructuralFingerprint,
+  StructuralFingerprint,
+} from "./structural-fingerprint";
 
 export interface StyleDNAMetrics {
   corpusSummary: {
@@ -786,15 +798,29 @@ export function extractAndSaveProfileFromProcessed(): StyleDNAMetrics {
   // 4. Save dual layer profiles & fingerprint to data/profile/
   saveDualLayerProfiles(personalProfile, academicProfile, runtimeFingerprint);
 
-  // 5. Save data/profile/metrics.json
+  // 5. Build & Save Lexical Fingerprint (Weighted statistical preference engine)
+  const lexicalFingerprint = extractLexicalFingerprint(personalTexts);
+  saveLexicalFingerprint(lexicalFingerprint);
+
+  // 6. Build & Save Structural Fingerprint (Cadence and boundary limits)
+  const structuralFingerprint = extractStructuralFingerprint(mergedMetrics);
+  saveStructuralFingerprint(structuralFingerprint);
+
+  // 7. Save data/profile/metrics.json
   const metricsPath = path.join(profileDir, "metrics.json");
   fs.writeFileSync(metricsPath, JSON.stringify(mergedMetrics, null, 2), "utf-8");
 
-  // 6. Save consolidated runtime profile to data/profile/voiceDNA.json
+  // 8. Save consolidated runtime profile to data/profile/voiceDNA.json
   const profilePath = path.join(profileDir, "voiceDNA.json");
-  const synthesizedGuidelines = `# Calibrated Dual-Layer Academic Voice Guidelines
-## Merged Runtime Directives:
+  const synthesizedGuidelines = `# Calibrated Personal VoiceDNA Guidelines
+## Authorial Directives:
 ${runtimeFingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
+
+## Lexical Preferences (Weighted Soft Constraints):
+${lexicalFingerprint.softLexicalConstraints.map((c) => `- ${c}`).join("\n")}
+
+## Structural Boundaries:
+${structuralFingerprint.structuralConstraints.map((c) => `- ${c}`).join("\n")}
 
 ## Layer A (Personal Thinking Scaffolding):
 - Framing: ${personalProfile.sentence_framing.directive}
@@ -802,14 +828,14 @@ ${runtimeFingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
 - Thought Cadence: ~${Math.round(personalProfile.thought_expansion.averageWords)} words/sentence
 - Clarification Loops: ${personalProfile.clarification_loops.directive}
 
-## Layer B (Academic Standards):
-- Diction: ${academicProfile.academic_vocabulary.directive}
-- Transitions: ${academicProfile.formal_transitions.directive}
+## Layer B (Academic Safety Boundary):
+- Safety Policy: ${academicProfile.academic_vocabulary.directive}
+- Transition Policy: ${academicProfile.formal_transitions.directive}
 - Citations: ${academicProfile.citation_handling.directive}
-- Subordination: ${academicProfile.technical_sentence_structure.directive}
+- Clause Boundary: ${academicProfile.technical_sentence_structure.directive}
 
-## Quantitative Target Baseline:
-- Average Sentence Length: ${mergedMetrics.sentenceLength.averageWords ?? "—"} words
+## Quantitative Measured Habits:
+- Average Sentence Length: ${mergedMetrics.sentenceLength.averageWords ?? "—"} words (Natural range: ${structuralFingerprint.sentenceRhythm.naturalRange.join("–")} words)
 - Clause Density: ${mergedMetrics.clauseDensity.averageClausesPerSentence ?? "—"} clauses/sentence
 - Clarification Frequency: ${mergedMetrics.clarificationFrequency.densityPer100Words ?? "—"} markers / 100 words
 - Transition Density: ${mergedMetrics.transitionFrequency.densityPer100Words ?? "—"} per 100 words
@@ -822,6 +848,8 @@ ${runtimeFingerprint.qualitative_rules.map((r) => `- ${r}`).join("\n")}
     metrics: mergedMetrics,
     layerA: personalProfile,
     layerB: academicProfile,
+    lexicalFingerprint,
+    structuralFingerprint,
     layers: {
       layerA_personal_thinking: personalProfile,
       layerB_academic: academicProfile,
@@ -1043,14 +1071,41 @@ export function synthesizeVoiceProfileFromDocs(documents: any[]): any {
   const runtimeFingerprint = mergeDualLayerProfiles(personalProfile, academicProfile, existingFingerprint);
   saveDualLayerProfiles(personalProfile, academicProfile, runtimeFingerprint);
 
+  // Build & Save Lexical Fingerprint
+  const lexicalFingerprint = extractLexicalFingerprint(personalTexts);
+  saveLexicalFingerprint(lexicalFingerprint);
+
+  // Build & Save Structural Fingerprint
+  const structuralFingerprint = extractStructuralFingerprint(metrics);
+  saveStructuralFingerprint(structuralFingerprint);
+
   const avgLenDisplay = metrics.sentenceLength.averageWords !== null ? `~${Math.round(metrics.sentenceLength.averageWords)}` : "moderate";
   const transDensityDisplay = metrics.transitionFrequency.densityPer100Words !== null ? `${metrics.transitionFrequency.densityPer100Words}` : "standard";
 
-  const synthesizedGuidelines = `# Calibrated Dual-Layer Academic Voice Guidelines
+  const synthesizedGuidelines = `# Calibrated Personal VoiceDNA Guidelines
+## Authorial Directives:
 ${runtimeFingerprint.qualitative_rules.map((r: string) => `- ${r}`).join("\n")}
 
+## Lexical Preferences (Weighted Soft Constraints):
+${lexicalFingerprint.softLexicalConstraints.map((c) => `- ${c}`).join("\n")}
+
+## Structural Boundaries:
+${structuralFingerprint.structuralConstraints.map((c) => `- ${c}`).join("\n")}
+
+## Layer A (Personal Thinking Scaffolding):
+- Framing: ${personalProfile.sentence_framing.directive}
+- Workflow: ${personalProfile.workflow_explanations.directive}
+- Thought Cadence: ~${Math.round(personalProfile.thought_expansion.averageWords)} words/sentence
+- Clarification Loops: ${personalProfile.clarification_loops.directive}
+
+## Layer B (Academic Safety Boundary):
+- Safety Policy: ${academicProfile.academic_vocabulary.directive}
+- Transition Policy: ${academicProfile.formal_transitions.directive}
+- Citations: ${academicProfile.citation_handling.directive}
+- Clause Boundary: ${academicProfile.technical_sentence_structure.directive}
+
 ## Measurable Quantitative Habits:
-- Average Sentence Length: ${metrics.sentenceLength.averageWords ?? "—"} words
+- Average Sentence Length: ${metrics.sentenceLength.averageWords ?? "—"} words (Natural range: ${structuralFingerprint.sentenceRhythm.naturalRange.join("–")} words)
 - Clause Density: ${metrics.clauseDensity.averageClausesPerSentence ?? "—"} clauses/sentence
 - Clarification Frequency: ${metrics.clarificationFrequency.densityPer100Words ?? "—"} markers / 100 words
 - Transition Density: ${metrics.transitionFrequency.densityPer100Words ?? "—"} per 100 words
@@ -1064,6 +1119,8 @@ ${runtimeFingerprint.qualitative_rules.map((r: string) => `- ${r}`).join("\n")}
     metrics,
     layerA: personalProfile,
     layerB: academicProfile,
+    lexicalFingerprint,
+    structuralFingerprint,
     fingerprint: runtimeFingerprint,
     sentenceLength: metrics.sentenceLength,
     clauseDensity: metrics.clauseDensity,
@@ -1087,9 +1144,9 @@ ${runtimeFingerprint.qualitative_rules.map((r: string) => `- ${r}`).join("\n")}
     sentence_cadence: metrics.sentenceLength,
     preferred_transitions: topTrans,
     rhetorical_habits: [
-      "Frames theoretical context before empirical evidence",
-      "Employs disciplined epistemic hedging",
-      "Maintains scholarly syntactic cadence",
+      "Establishes direct contextual baseline before operational mechanics",
+      "Grounds operational mechanisms with clear clarification markers",
+      "Maintains author's authentic cadence and natural connectors",
     ],
     synthesized_guidelines: synthesizedGuidelines,
     profile_json: JSON.stringify(metrics, null, 2),
@@ -1370,5 +1427,11 @@ export function loadMetrics(): StyleDNAMetrics | null {
   return null;
 }
 
-export { loadPersonalThinkingProfile, loadAcademicProfile, loadFingerprint };
+export {
+  loadPersonalThinkingProfile,
+  loadAcademicProfile,
+  loadFingerprint,
+  loadLexicalFingerprint,
+  loadStructuralFingerprint,
+};
 

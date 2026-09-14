@@ -71,4 +71,6 @@ next-env.d.ts
 !/data/profile/.gitkeep
 /data/corpus/*
 !/data/corpus/.gitkeep
+!/data/corpus/personal/
+!/data/corpus/personal/.gitkeep
 

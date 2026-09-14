@@ -250,12 +250,12 @@ export function generatePersonalThinkingProfile(
 }
 
 /**
- * Builds Layer B: Academic Profile
- * Learns:
- * - academic vocabulary
- * - formal transitions
- * - citation handling
- * - technical sentence structure
+ * Builds Layer B: Academic Profile (Safety & Validity Boundary Only)
+ * Acts strictly as a negative filter and formatting validator:
+ * - prevents texting abbreviations, slang, profanity, and chat filler
+ * - ensures valid academic citation notation
+ * - enforces grammatical validity
+ * - NEVER serves as an authorial style target or vocabulary inflator
  */
 export function generateAcademicProfile(
   metrics: StyleDNAMetrics,
@@ -265,23 +265,21 @@ export function generateAcademicProfile(
   const clauseDensity = metrics.clauseDensity.averageClausesPerSentence ?? 2.8;
   const subRatio = metrics.clauseDensity.subordinateClauseRatio ?? 1.5;
 
-  const formalConnectors = ["Consequently", "Furthermore", "In contrast", "Therefore", "Thus", "Specifically"];
-
-  // 1. Academic Vocabulary
+  // 1. Academic Vocabulary Policy (Negative Filter — forbids vocabulary elevation)
   const vocabDirective =
-    "employs disciplined, formal domain terminology; avoids ornamental idioms in favor of exact technical descriptors";
+    "enforces negative safety filter: blocks texting abbreviations, slang, and profanity while strictly forbidding artificial vocabulary elevation (do NOT replace natural verbs with formal synonyms)";
 
-  // 2. Formal Transitions
+  // 2. Natural Transition Policy (forbids formal connector inflation)
   const transDirective =
-    "employs rigorous academic transitional connectors (e.g. 'Consequently', 'Furthermore', 'In contrast', 'Therefore') to signpost logical entailments";
+    "preserves natural conversational and deductive transitions (and, but, also, then, so); never forces artificial scholarly connectors (Consequently, Furthermore, Therefore)";
 
   // 3. Citation Handling
   const citationDirective =
-    "integrates scholarly citations (numeric bracket notation [1] and author-date references) seamlessly at propositional boundaries";
+    "preserves scholarly citations (numeric bracket notation [1] and author-date references) verbatim at propositional boundaries";
 
-  // 4. Technical Sentence Structure
+  // 4. Technical Sentence Structure Boundary
   const syntaxDirective =
-    `constructs disciplined compound-complex academic sentences (averaging ~${clauseDensity} clauses/sentence, subordination ratio: ${subRatio}), employing passive constructions appropriately in methodology`;
+    `ensures grammatical cohesion without forcing artificial compound-complex inflation; keeps sentences within author's natural clause boundary`;
 
   const qualitativeRules = [
     vocabDirective,
@@ -296,26 +294,26 @@ export function generateAcademicProfile(
     metrics,
     academic_vocabulary: {
       directive: vocabDirective,
-      evidence: `Type-token ratio: ${ttr} across formal domain tokens`,
-      confidence: previousProfile?.academic_vocabulary?.confidence ?? 0.88,
+      evidence: `Negative safety filter active across ${metrics.corpusSummary?.totalWords || 0} tokens`,
+      confidence: previousProfile?.academic_vocabulary?.confidence ?? 0.95,
       typeTokenRatio: ttr,
     },
     formal_transitions: {
       directive: transDirective,
-      evidence: `Formal connector distribution across analyzed text`,
-      confidence: previousProfile?.formal_transitions?.confidence ?? 0.9,
-      topFormalConnectors: formalConnectors,
+      evidence: "Formal connector inflation disabled; natural connectors enforced",
+      confidence: previousProfile?.formal_transitions?.confidence ?? 0.95,
+      topFormalConnectors: ["and", "but", "also", "then", "so"],
     },
     citation_handling: {
       directive: citationDirective,
       evidence: "Verified bracket [1] and author-date citation preservation",
-      confidence: previousProfile?.citation_handling?.confidence ?? 0.95,
-      detectedStyle: "IEEE / ACM Numeric & Author-Date",
+      confidence: previousProfile?.citation_handling?.confidence ?? 0.98,
+      detectedStyle: "IEEE / ACM Numeric & Author-Date Intact",
     },
     technical_sentence_structure: {
       directive: syntaxDirective,
-      evidence: `Average ${clauseDensity} clauses/sentence with subordination ratio ${subRatio}`,
-      confidence: previousProfile?.technical_sentence_structure?.confidence ?? 0.85,
+      evidence: `Grammar validity boundary without forced subordination`,
+      confidence: previousProfile?.technical_sentence_structure?.confidence ?? 0.9,
       clauseDensity,
       subordinationRatio: subRatio,
     },
@@ -341,18 +339,18 @@ export function mergeDualLayerProfiles(
 ): RuntimeFingerprint {
   const avgWords = layerA.thought_expansion.averageWords;
   const clauseDensity = layerB.technical_sentence_structure.clauseDensity;
-  const formalTransitions = layerB.formal_transitions.topFormalConnectors.slice(0, 4).join(", ");
+  const naturalTransitions = layerB.formal_transitions.topFormalConnectors.slice(0, 5).join(", ");
 
-  // 1. Sentence Rhythm: Layer A cadence bounded by Layer B syntax
-  const sentenceRhythm = `Develops multi-stage argumentation following the author's natural cadence (~${Math.round(avgWords)} words/sentence), sustained by Layer B's disciplined technical clause subordination (~${clauseDensity} clauses/sentence).`;
+  // 1. Sentence Rhythm: Layer A cadence bounded by Layer B grammatical validity
+  const sentenceRhythm = `Develops multi-stage argumentation following the author's natural cadence (~${Math.round(avgWords)} words/sentence), maintaining clear clause boundaries (~${clauseDensity} clauses/sentence) without forced artificial complexity.`;
 
   // 2. Explanation Order: Inherits Layer A cognitive workflow
   const explanationOrder = "Structures theoretical explanations with sequential procedural progression: establish contextual baseline -> formalize operational mechanism -> evaluate outcomes.";
 
-  // 3. Transition Placement: Layer A pacing mapped onto Layer B formal transitional connectors
-  const transitionPlacement = `Signposts shifts in reasoning using formal scholarly connectors (e.g. ${formalTransitions}), matching the author's deductive flow without informal signposting.`;
+  // 3. Transition Placement: Layer A pacing using natural connectors
+  const transitionPlacement = `Signposts logical progression using the author's natural transition connectors (e.g. ${naturalTransitions}), matching the author's authentic rhythm without artificial scholarly inflation.`;
 
-  // 4. Paragraph Flow: Combines Layer A paragraph rhythm with Layer B academic cohesion
+  // 4. Paragraph Flow: Combines Layer A paragraph rhythm with clear analytical synthesis
   const paragraphFlow = `Maintains modular paragraphs (${layerA.paragraph_rhythm.averageSentences} sentences/para) developed with explanatory support and clear analytical synthesis.`;
 
   const qualitativeRules = [
@@ -396,21 +394,21 @@ export function mergeDualLayerProfiles(
     },
     syntactic_nesting: {
       category: "syntactic_nesting",
-      name: "Technical Syntax & Clauses (Layer B)",
+      name: "Syntax & Clause Boundaries (Layer B)",
       directive: layerB.technical_sentence_structure.directive,
       confidence: layerB.technical_sentence_structure.confidence,
       evidence: layerB.technical_sentence_structure.evidence,
     },
     transitional_flow: {
       category: "transitional_flow",
-      name: "Formal Transitions (Layer B)",
+      name: "Natural Connectors (Layer B)",
       directive: layerB.formal_transitions.directive,
       confidence: layerB.formal_transitions.confidence,
       evidence: layerB.formal_transitions.evidence,
     },
     vocabulary_discipline: {
       category: "vocabulary_discipline",
-      name: "Academic Vocabulary (Layer B)",
+      name: "Vocabulary Safety Filter (Layer B)",
       directive: layerB.academic_vocabulary.directive,
       confidence: layerB.academic_vocabulary.confidence,
       evidence: layerB.academic_vocabulary.evidence,
@@ -420,7 +418,7 @@ export function mergeDualLayerProfiles(
       name: "Deductive Synthesis",
       directive: "concludes sections by synthesizing operational insights rather than repeating broad abstracts",
       confidence: 0.85,
-      evidence: "Synthesized from dual-layer argument closure",
+      evidence: "Synthesized from argument closure",
     },
   };
 

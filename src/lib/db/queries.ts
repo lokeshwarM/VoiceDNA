@@ -7,6 +7,7 @@ export interface TrainingDocument {
   raw_text: string;
   word_count: number;
   local_path?: string | null;
+  is_personal?: number;
   metrics: {
     avgSentenceLength: number;
     sentenceVariance?: string;
@@ -135,15 +136,33 @@ export function getAllDocuments(): TrainingDocument[] {
   const rows = db.prepare("SELECT * FROM training_documents ORDER BY created_at DESC").all() as any[];
   return rows.map((r) => ({
     ...r,
+    is_personal: r.is_personal ?? 1,
     metrics: r.metrics ? JSON.parse(r.metrics) : {},
   }));
 }
 
-export function addDocument(doc: Omit<TrainingDocument, "metrics"> & { metrics: any }) {
+/**
+ * Returns only personal corpus documents that define the author's writing style.
+ * Strictly excludes demo and validation documents.
+ */
+export function getPersonalDocuments(): TrainingDocument[] {
   const db = getDb();
+  const rows = db
+    .prepare("SELECT * FROM training_documents WHERE is_personal = 1 AND title NOT LIKE '%Consensus%' ORDER BY created_at DESC")
+    .all() as any[];
+  return rows.map((r) => ({
+    ...r,
+    is_personal: 1,
+    metrics: r.metrics ? JSON.parse(r.metrics) : {},
+  }));
+}
+
+export function addDocument(doc: Omit<TrainingDocument, "metrics"> & { metrics: any; is_personal?: number }) {
+  const db = getDb();
+  const isPersonal = doc.is_personal ?? (doc.title.toLowerCase().includes("consensus") ? 0 : 1);
   db.prepare(`
-    INSERT INTO training_documents (id, title, file_type, raw_text, word_count, local_path, metrics, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO training_documents (id, title, file_type, raw_text, word_count, local_path, is_personal, metrics, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     doc.id,
     doc.title,
@@ -151,6 +170,7 @@ export function addDocument(doc: Omit<TrainingDocument, "metrics"> & { metrics: 
     doc.raw_text,
     doc.word_count,
     doc.local_path || null,
+    isPersonal,
     JSON.stringify(doc.metrics),
     doc.created_at
   );

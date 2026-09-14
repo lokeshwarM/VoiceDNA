@@ -31,20 +31,39 @@ export interface CorpusSummary {
  * Returns metadata for every corpus file (words, sentences, last modified).
  */
 export async function scanAndSyncCorpus(): Promise<CorpusSummary> {
-  const corpusDir = path.join(process.cwd(), "data", "corpus");
+  const baseCorpusDir = path.join(process.cwd(), "data", "corpus");
+  const personalCorpusDir = path.join(baseCorpusDir, "personal");
   const processedDir = path.join(process.cwd(), "data", "processed");
   const profileDir = path.join(process.cwd(), "data", "profile");
 
-  if (!fs.existsSync(corpusDir)) fs.mkdirSync(corpusDir, { recursive: true });
+  if (!fs.existsSync(baseCorpusDir)) fs.mkdirSync(baseCorpusDir, { recursive: true });
+  if (!fs.existsSync(personalCorpusDir)) fs.mkdirSync(personalCorpusDir, { recursive: true });
   if (!fs.existsSync(processedDir)) fs.mkdirSync(processedDir, { recursive: true });
   if (!fs.existsSync(profileDir)) fs.mkdirSync(profileDir, { recursive: true });
 
+  // Use data/corpus/personal as the production corpus directory
+  const personalFiles = fs.readdirSync(personalCorpusDir).filter((f) => {
+    try {
+      return fs.statSync(path.join(personalCorpusDir, f)).isFile();
+    } catch {
+      return false;
+    }
+  });
+
+  const corpusDir = personalFiles.length > 0 ? personalCorpusDir : baseCorpusDir;
   const rawFiles = fs.readdirSync(corpusDir);
   const supportedExts = [".txt", ".pdf", ".docx", ".md"];
 
   const validFiles = rawFiles.filter((f) => {
+    const filePath = path.join(corpusDir, f);
+    try {
+      if (fs.statSync(filePath).isDirectory()) return false;
+    } catch {
+      return false;
+    }
     const ext = path.extname(f).toLowerCase();
-    return supportedExts.includes(ext);
+    const isDemo = f.toLowerCase().includes("consensus") || f.toLowerCase().includes("demo");
+    return supportedExts.includes(ext) && !isDemo;
   });
 
   const fileInfos: CorpusFileInfo[] = [];

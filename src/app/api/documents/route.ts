@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs";
-import { getAllDocuments, addDocument, updateVoiceProfile, getActiveVoiceProfile } from "@/lib/db/queries";
+import { getAllDocuments, getPersonalDocuments, addDocument, updateVoiceProfile, getActiveVoiceProfile } from "@/lib/db/queries";
 import { computeDocumentMetrics, synthesizeVoiceProfileFromDocs } from "@/lib/styleDNA/extract";
 import { parseDocumentBuffer } from "@/lib/parser";
 import { getDb } from "@/lib/db";
@@ -97,9 +97,10 @@ export async function POST(req: NextRequest) {
 
     addDocument(newDoc);
 
-    // Build ONE VoiceDNA profile from ALL uploaded documents
+    // Build ONE VoiceDNA profile from personal documents only
+    const personalDocs = getPersonalDocuments();
     const allDocs = getAllDocuments();
-    const updatedProfile = synthesizeVoiceProfileFromDocs(allDocs);
+    const updatedProfile = synthesizeVoiceProfileFromDocs(personalDocs.length > 0 ? personalDocs : allDocs);
 
     if (updatedProfile) {
       const db = getDb();

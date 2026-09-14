@@ -221,8 +221,8 @@ export const LearnedRules: React.FC<LearnedRulesProps> = ({
                 <option value="vocabulary">Vocabulary (Preferred terms, word replacements)</option>
                 <option value="syntax">Syntax (Sentence structure, clause order)</option>
                 <option value="brevity">Brevity (Trimming filler, conciseness)</option>
-                <option value="tone">Tone (Hedging, formality, scholarly persona)</option>
-                <option value="structure">Structure (Paragraph flow, argumentation)</option>
+                <option value="tone">Tone (Directness, natural author voice, clarity)</option>
+                <option value="structure">Structure (Paragraph flow, explanation order)</option>
               </select>
             </div>
 

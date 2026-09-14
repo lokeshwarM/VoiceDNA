@@ -1,5 +1,4 @@
 import { diffWords } from "diff";
-import { callLLM } from "./provider";
 import { addLearnedRule, getAllLearnedRules, recordRuleFeedback, LearnedRule } from "../db/queries";
 import { getDb } from "../db";
 import {
@@ -18,13 +17,118 @@ export interface LearnFromEditResult {
   totalEditsCount: number;
 }
 
+const FORMAL_TRANSITIONS = new Set([
+  "consequently",
+  "furthermore",
+  "moreover",
+  "therefore",
+  "thus",
+  "in addition",
+  "nevertheless",
+  "hence",
+  "accordingly",
+  "notably",
+]);
+
+/**
+ * Deterministically extracts stylistic correction memory from manual edits.
+ * 0 LLM CALLS — uses exact token-level diff classification.
+ *
+ * Stores:
+ * - user rejected synonym replacement
+ * - user restored original verb
+ * - user restored original transition
+ * - user prefers direct phrasing
+ */
+export function extractDeterministicCorrection(
+  originalAIOutput: string,
+  userEditedText: string,
+  structuralChanges: StructuralChange[]
+): {
+  ruleText: string;
+  category: LearnedRule["category"];
+  beforeSnippet: string | null;
+  afterSnippet: string | null;
+} {
+  const changes = diffWords(originalAIOutput, userEditedText);
+  const deletions: string[] = [];
+  const additions: string[] = [];
+
+  for (const part of changes) {
+    const trimmed = part.value.trim();
+    if (!trimmed) continue;
+    if (part.added) additions.push(trimmed);
+    if (part.removed) deletions.push(trimmed);
+  }
+
+  // 1. Check for formal transition rejection
+  for (const del of deletions) {
+    const lowerDel = del.toLowerCase().replace(/[^a-z]/g, "");
+    if (FORMAL_TRANSITIONS.has(lowerDel)) {
+      const add = additions[0] || "direct phrasing";
+      return {
+        ruleText: `User rejected formal transition: restored natural connector "${add}" instead of "${del}"`,
+        category: "syntax",
+        beforeSnippet: del,
+        afterSnippet: add,
+      };
+    }
+  }
+
+  // 2. Check for word/verb synonym rejection
+  if (deletions.length > 0 && additions.length > 0) {
+    const delWord = deletions[0].split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, "");
+    const addWord = additions[0].split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, "");
+
+    if (delWord.length > 1 && addWord.length > 1 && delWord.toLowerCase() !== addWord.toLowerCase()) {
+      return {
+        ruleText: `User rejected synonym replacement: prefer "${addWord}" instead of "${delWord}"`,
+        category: "vocabulary",
+        beforeSnippet: delWord,
+        afterSnippet: addWord,
+      };
+    }
+  }
+
+  // 3. Check for brevity preference (user deleted verbose phrasing)
+  if (deletions.length > 0 && additions.length === 0) {
+    const delSnippet = deletions.slice(0, 2).join(" ");
+    return {
+      ruleText: `User prefers concise phrasing: eliminated verbose expression "${delSnippet}"`,
+      category: "brevity",
+      beforeSnippet: delSnippet,
+      afterSnippet: null,
+    };
+  }
+
+  // 4. Structural change fallback
+  if (structuralChanges.length > 0) {
+    const st = structuralChanges[0];
+    return {
+      ruleText: st.description,
+      category: st.dimension.toLowerCase().includes("sentence") ? "syntax" : "structure",
+      beforeSnippet: deletions[0] || null,
+      afterSnippet: additions[0] || null,
+    };
+  }
+
+  return {
+    ruleText: "User refined sentence rhythm and phrasing according to personal voice",
+    category: "structure",
+    beforeSnippet: deletions[0] || null,
+    afterSnippet: additions[0] || null,
+  };
+}
+
 /**
  * Upgraded Learn Edits pipeline:
- * 1. Compares generated output vs user's manual edit.
+ * 1. Compares generated output vs user's manual edit deterministically.
  * 2. Detects structural changes (sentence length, clauses, transitions, punctuation, workflow).
- * 3. Updates VoiceDNA metrics in data/profile/voiceDNA.json (numbers only, never copies sentences).
- * 4. Checks deduplication: NEVER stores duplicate rules/examples.
- * 5. Rebuilds fingerprint every 20 edits.
+ * 3. Updates VoiceDNA metrics in data/profile/metrics.json and voiceDNA.json.
+ * 4. Checks deduplication & implements confidence accumulation:
+ *    - Single edit -> provisional memory (observed_count = 1, is_active = 0, confidence = 50%)
+ *    - Repeated edits -> confidence accumulates, activates when observed_count >= 2 and confidence >= 60%
+ * 5. Deterministic — zero extra LLM calls.
  */
 export async function learnFromManualEdits(
   originalAIOutput: string,
@@ -52,74 +156,14 @@ export async function learnFromManualEdits(
   // 4. Update fingerprint confidence based on structural changes
   updateFingerprintConfidence(structuralChanges);
 
-  // 4. Extract actionable style rule
-  const systemPrompt = `You are an expert computational writing coach.
-The AI suggested an academic rewrite, but the researcher manually edited it to match their personal voice.
-Analyze the differences between the AI output and the researcher's final version.
-Extract 1 concrete, actionable stylistic rule that captures the researcher's preference so future rewrites match their voice.
+  // 5. Deterministically extract correction rule
+  const { ruleText, category, beforeSnippet, afterSnippet } = extractDeterministicCorrection(
+    originalAIOutput,
+    userEditedText,
+    structuralChanges
+  );
 
-Categories allowed: "vocabulary", "syntax", "brevity", "tone", "structure".
-
-Respond STRICTLY in JSON format matching this schema:
-{
-  "rule_text": "Precise imperative rule describing what the researcher preferred (e.g., 'Prefer active first-person phrasing in methodology rather than passive constructions', or 'Avoid verbose signposts like In order to; prefer To')",
-  "category": "vocabulary",
-  "before_snippet": "Short snippet showing what the AI wrote that was modified",
-  "after_snippet": "Short snippet showing the researcher's preferred version"
-}`;
-
-  const userPrompt = `ORIGINAL AI OUTPUT:
-${originalAIOutput.slice(0, 2000)}
-
-RESEARCHER'S MANUAL REVISION:
-${userEditedText.slice(0, 2000)}
-
-Identified key modifications:
-Removed / Replaced: ${deletions.slice(0, 4).join(" | ")}
-Inserted / Preferred: ${additions.slice(0, 4).join(" | ")}
-${
-  structuralChanges.length > 0
-    ? `Detected Structural Changes:\n${structuralChanges.map((s) => `- ${s.dimension}: ${s.description}`).join("\n")}`
-    : ""
-}`;
-
-  let ruleText = "Refine vocabulary and sentence rhythm according to manual revision";
-  let category: LearnedRule["category"] = "syntax";
-  let beforeSnippet = deletions[0] || null;
-  let afterSnippet = additions[0] || null;
-
-  try {
-    const rawResponse = await Promise.race([
-      callLLM({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.2,
-        jsonMode: true,
-      }),
-      new Promise<string>((_, reject) =>
-        setTimeout(() => reject(new Error("LLM rule extraction timed out")), 5000)
-      ),
-    ]);
-
-    const parsed = JSON.parse(rawResponse);
-    if (parsed.rule_text) ruleText = parsed.rule_text;
-    if (parsed.category) category = parsed.category;
-    if (parsed.before_snippet) beforeSnippet = parsed.before_snippet;
-    if (parsed.after_snippet) afterSnippet = parsed.after_snippet;
-  } catch (err: any) {
-    console.warn("Could not call LLM for edit learning, falling back to heuristic rule:", err.message);
-    if (structuralChanges.length > 0) {
-      ruleText = structuralChanges[0].description;
-      category = structuralChanges[0].dimension.toLowerCase().includes("sentence") ? "syntax" : "structure";
-    } else if (deletions.length > 0 && additions.length > 0) {
-      ruleText = `Prefer "${additions[0]}" instead of "${deletions[0]}"`;
-      category = "vocabulary";
-    }
-  }
-
-  // 5. Confidence System & Evidence Corroboration:
+  // 6. Confidence System & Evidence Corroboration:
   // Check if this edit corroborates or contradicts an existing rule
   const existingRules = getAllLearnedRules();
   const duplicate = existingRules.find(
@@ -151,7 +195,7 @@ ${
     const updated = recordRuleFeedback(duplicate.id, true);
     finalRule = updated || duplicate;
   } else {
-    // First observation: insufficient evidence -> provisional (is_active = 0)
+    // First observation: provisional correction memory (is_active = 0, confidence = 50%)
     finalRule = {
       id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       rewrite_id: rewriteId || null,
@@ -163,13 +207,13 @@ ${
       observed_count: 1,
       accepted_count: 1,
       rejected_count: 0,
-      confidence_pct: 100.0,
+      confidence_pct: 50.0,
       created_at: new Date().toISOString(),
     };
     addLearnedRule(finalRule);
   }
 
-  // 6. Track edits count and rebuild fingerprint every 20 edits
+  // 7. Track edits count
   const db = getDb();
   const countRow = db.prepare("SELECT value FROM app_settings WHERE key = 'manual_edits_count'").get() as
     | { value: string }
@@ -181,7 +225,7 @@ ${
     String(totalEditsCount)
   );
 
-  // 6. Rebuild profile (metrics, fingerprint, voiceDNA) after every edit
+  // 8. Rebuild profile (metrics, fingerprint, voiceDNA) after edit
   let fingerprintRebuilt = false;
   try {
     await rebuildVoiceDNA();

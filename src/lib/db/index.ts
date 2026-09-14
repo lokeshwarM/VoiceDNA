@@ -98,6 +98,9 @@ function initSchema(db: Database.Database) {
   try {
     db.exec(`ALTER TABLE learned_rules ADD COLUMN confidence_pct REAL DEFAULT 100.0;`);
   } catch {}
+  try {
+    db.exec(`ALTER TABLE training_documents ADD COLUMN is_personal INTEGER DEFAULT 1;`);
+  } catch {}
 
   // Initialize default settings (Ollama as primary local engine)
   const defaultSettings: Record<string, string> = {

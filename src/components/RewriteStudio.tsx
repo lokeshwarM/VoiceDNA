@@ -53,7 +53,7 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
 }) => {
   const [draftInput, setDraftInput] = useState(initialDraft);
   const [sectionType, setSectionType] = useState(initialSection);
-  const [rewriteMode, setRewriteMode] = useState<RewriteMode>("preserve");
+  const [rewriteMode, setRewriteMode] = useState<RewriteMode>("exact_voice");
   const [customInstructions, setCustomInstructions] = useState("");
   const [rewrittenOutput, setRewrittenOutput] = useState(initialOutput);
   const [userEditedText, setUserEditedText] = useState(initialOutput);
@@ -362,9 +362,15 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
 
               <div>
                 <label className="text-[10px] font-medium text-indigo-300 mb-1 flex items-center justify-between">
-                  <span>Rewrite Mode</span>
-                  {rewriteMode === "preserve" && (
-                    <span className="text-[9px] text-emerald-400 font-mono">&lt;20% Lexical Edit</span>
+                  <span>Compiler Mode</span>
+                  {rewriteMode === "exact_voice" && (
+                    <span className="text-[9px] text-emerald-400 font-mono">Author Fingerprint</span>
+                  )}
+                  {rewriteMode === "light_cleanup" && (
+                    <span className="text-[9px] text-blue-400 font-mono">Grammar &amp; Punctuation</span>
+                  )}
+                  {rewriteMode === "rewrite" && (
+                    <span className="text-[9px] text-purple-400 font-mono">Restructure</span>
                   )}
                 </label>
                 <select
@@ -372,9 +378,9 @@ export const RewriteStudio: React.FC<RewriteStudioProps> = ({
                   onChange={(e) => setRewriteMode(e.target.value as RewriteMode)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-indigo-900/50 text-xs font-medium text-indigo-200 focus:outline-none focus:border-indigo-500 shadow-inner"
                 >
-                  <option value="preserve">Preserve (Default)</option>
-                  <option value="academic_polish">Academic Polish</option>
-                  <option value="strong_voicedna">Strong VoiceDNA</option>
+                  <option value="exact_voice">Exact Voice (Default)</option>
+                  <option value="light_cleanup">Light Cleanup</option>
+                  <option value="rewrite">Rewrite</option>
                 </select>
               </div>
             </div>

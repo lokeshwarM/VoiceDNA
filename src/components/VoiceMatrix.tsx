@@ -262,20 +262,20 @@ export const VoiceMatrix: React.FC<VoiceMatrixProps> = ({ profile, stats, onRebu
             {/* Layer B Card */}
             <div className="p-4 rounded-xl bg-slate-950/60 border border-cyan-500/20 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-cyan-300">Layer B: Academic Profile</span>
-                <span className="text-[10px] text-cyan-400/80 font-mono">Peer-Review</span>
+                <span className="font-semibold text-cyan-300">Layer B: Academic Safety Boundary</span>
+                <span className="text-[10px] text-cyan-400/80 font-mono">Safety Filter</span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Extracted from assignments and papers. Governs scholarly vocabulary, formal transitions, and technical structure.
+                Negative boundary filter: blocks texting abbreviations, slang, and chat filler. Strictly forbids artificial vocabulary inflation.
               </p>
               <div className="space-y-1.5 pt-1 text-[11px]">
                 <div>
-                  <span className="text-slate-400 font-medium">Syntactic Depth: </span>
-                  <span className="text-slate-200">~{layerB?.technical_sentence_structure?.clauseDensity ?? clauseDensity.averageClauses ?? 2.4} clauses/sentence</span>
+                  <span className="text-slate-400 font-medium">Vocabulary Policy: </span>
+                  <span className="text-emerald-300">No inflation (keeps natural verbs)</span>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Connectors: </span>
-                  <span className="text-slate-300">{(layerB?.formal_transitions?.topFormalConnectors || ["Moreover", "Consequently", "Furthermore"]).slice(0, 3).join(", ")}</span>
+                  <span className="text-slate-300">Natural connectors (and, but, also, then, so)</span>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Citations: </span>

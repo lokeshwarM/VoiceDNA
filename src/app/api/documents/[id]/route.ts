@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteDocument, getAllDocuments, updateVoiceProfile } from "@/lib/db/queries";
+import { deleteDocument, getAllDocuments, getPersonalDocuments, updateVoiceProfile } from "@/lib/db/queries";
 import { synthesizeVoiceProfileFromDocs } from "@/lib/styleDNA/extract";
 import { getDb } from "@/lib/db";
 
@@ -14,9 +14,12 @@ export async function DELETE(
     const { id } = await context.params;
     deleteDocument(id);
 
-    // Recalibrate voice profile with remaining documents
-    const remainingDocs = getAllDocuments();
-    const updatedProfile = synthesizeVoiceProfileFromDocs(remainingDocs);
+    // Recalibrate voice profile with remaining personal documents
+    const remainingPersonal = getPersonalDocuments();
+    const remainingAll = getAllDocuments();
+    const updatedProfile = synthesizeVoiceProfileFromDocs(
+      remainingPersonal.length > 0 ? remainingPersonal : remainingAll
+    );
 
     if (updatedProfile) {
       const db = getDb();

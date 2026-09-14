@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAllDocuments, updateVoiceProfile, getActiveVoiceProfile } from "@/lib/db/queries";
+import { getAllDocuments, getPersonalDocuments, updateVoiceProfile, getActiveVoiceProfile } from "@/lib/db/queries";
 import { synthesizeVoiceProfileFromDocs } from "@/lib/styleDNA/extract";
 import { rebuildVoiceDNA } from "@/lib/styleDNA/corpus";
 import { getDb } from "@/lib/db";
@@ -9,8 +9,11 @@ export const dynamic = "force-dynamic";
 
 export async function POST() {
   try {
+    const personalDocs = getPersonalDocuments();
     const allDocs = getAllDocuments();
-    let updatedProfile = synthesizeVoiceProfileFromDocs(allDocs);
+    let updatedProfile = synthesizeVoiceProfileFromDocs(
+      personalDocs.length > 0 ? personalDocs : allDocs
+    );
 
     // Also trigger corpus rebuild if data/corpus has files
     try {
@@ -39,9 +42,9 @@ ${corpusResult.fingerprintRules.map((r) => `- ${r}`).join("\n")}
           sentence_cadence: corpusResult.metrics.sentenceLength,
           preferred_transitions: corpusResult.metrics.transitionFrequency.topTransitions.map((t) => t.word),
           rhetorical_habits: [
-            "Frames theoretical context before empirical evidence",
-            "Employs disciplined epistemic hedging",
-            "Maintains scholarly syntactic cadence",
+            "Establishes direct contextual baseline before operational mechanics",
+            "Grounds operational mechanisms with clear clarification markers",
+            "Maintains author's authentic cadence and natural connectors",
           ],
           synthesized_guidelines: synthesizedGuidelines,
           profile_json: JSON.stringify(corpusResult.metrics, null, 2),
